@@ -17,12 +17,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
  */
+#include <media/v4l2-common.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-ioctl.h>
 
 #include "imx-ipu.h"
 
-static struct ipu_fmt ipu_fmt[] = {
+static struct ipu_fmt ipu_fmt_yuv[] = {
 	{
 		.fourcc = V4L2_PIX_FMT_YUV420,
 		.name = "YUV 4:2:0 planar, YCbCr",
@@ -39,7 +40,11 @@ static struct ipu_fmt ipu_fmt[] = {
 		.fourcc = V4L2_PIX_FMT_YUYV,
 		.name = "4:2:2, packed, YUYV",
 		.bytes_per_pixel = 2,
-	}, {
+	},
+};
+
+static struct ipu_fmt ipu_fmt_rgb[] = {
+	{
 		.fourcc = V4L2_PIX_FMT_RGB32,
 		.name = "RGB888",
 		.bytes_per_pixel = 4,
@@ -63,18 +68,46 @@ static struct ipu_fmt ipu_fmt[] = {
 	},
 };
 
-static struct ipu_fmt *ipu_find_fmt(unsigned int pixelformat)
+struct ipu_fmt *ipu_find_fmt_yuv(unsigned int pixelformat)
 {
 	struct ipu_fmt *fmt;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(ipu_fmt); i++) {
-                fmt = &ipu_fmt[i];
+	for (i = 0; i < ARRAY_SIZE(ipu_fmt_yuv); i++) {
+                fmt = &ipu_fmt_yuv[i];
 		if (fmt->fourcc == pixelformat)
 			return fmt;
 	}
 
 	return NULL;
+}
+EXPORT_SYMBOL_GPL(ipu_find_fmt_yuv);
+
+struct ipu_fmt *ipu_find_fmt_rgb(unsigned int pixelformat)
+{
+	struct ipu_fmt *fmt;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ipu_fmt_rgb); i++) {
+                fmt = &ipu_fmt_rgb[i];
+		if (fmt->fourcc == pixelformat)
+			return fmt;
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(ipu_find_fmt_rgb);
+
+static struct ipu_fmt *ipu_find_fmt(unsigned long pixelformat)
+{
+	struct ipu_fmt *fmt;
+
+	fmt = ipu_find_fmt_yuv(pixelformat);
+	if (fmt)
+		return fmt;
+	fmt = ipu_find_fmt_rgb(pixelformat);
+
+	return fmt;
 }
 
 int ipu_try_fmt(struct file *file, void *fh,
@@ -82,17 +115,8 @@ int ipu_try_fmt(struct file *file, void *fh,
 {
 	struct ipu_fmt *fmt;
 
-	if (f->fmt.pix.width > 4096)
-		f->fmt.pix.width = 4096;
-	if (f->fmt.pix.width < 128)
-		f->fmt.pix.width = 128;
-	if (f->fmt.pix.height > 4096)
-		f->fmt.pix.height = 4096;
-	if (f->fmt.pix.height < 128)
-		f->fmt.pix.height = 128;
-
-	f->fmt.pix.width &= ~0x3;
-	f->fmt.pix.height &= ~0x1;
+	v4l_bound_align_image(&f->fmt.pix.width, 128, 4096, 2,
+			      &f->fmt.pix.height, 128, 4096, 1, 0);
 
 	f->fmt.pix.field = V4L2_FIELD_NONE;
 
@@ -112,15 +136,76 @@ int ipu_try_fmt(struct file *file, void *fh,
 	return 0;
 }
 
-int ipu_enum_fmt(struct file *file, void *fh,
+int ipu_try_fmt_rgb(struct file *file, void *fh,
+		struct v4l2_format *f)
+{
+	struct ipu_fmt *fmt;
+
+	fmt = ipu_find_fmt_rgb(f->fmt.pix.pixelformat);
+	if (!fmt)
+		return -EINVAL;
+
+	return ipu_try_fmt(file, fh, f);
+}
+
+int ipu_try_fmt_yuv(struct file *file, void *fh,
+		struct v4l2_format *f)
+{
+	struct ipu_fmt *fmt;
+
+	fmt = ipu_find_fmt_yuv(f->fmt.pix.pixelformat);
+	if (!fmt)
+		return -EINVAL;
+
+	return ipu_try_fmt(file, fh, f);
+}
+
+int ipu_enum_fmt_rgb(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f)
 {
 	struct ipu_fmt *fmt;
 
-	if (f->index >= ARRAY_SIZE(ipu_fmt))
+	if (f->index >= ARRAY_SIZE(ipu_fmt_rgb))
 		return -EINVAL;
 
-	fmt = &ipu_fmt[f->index];
+	fmt = &ipu_fmt_rgb[f->index];
+
+	strlcpy(f->description, fmt->name, sizeof(f->description));
+	f->pixelformat = fmt->fourcc;
+
+	return 0;
+}
+
+int ipu_enum_fmt_yuv(struct file *file, void *fh,
+		struct v4l2_fmtdesc *f)
+{
+	struct ipu_fmt *fmt;
+
+	if (f->index >= ARRAY_SIZE(ipu_fmt_yuv))
+		return -EINVAL;
+
+	fmt = &ipu_fmt_yuv[f->index];
+
+	strlcpy(f->description, fmt->name, sizeof(f->description));
+	f->pixelformat = fmt->fourcc;
+
+	return 0;
+}
+
+int ipu_enum_fmt(struct file *file, void *fh,
+		struct v4l2_fmtdesc *f)
+{
+	struct ipu_fmt *fmt;
+	int index = f->index;
+
+	if (index >= ARRAY_SIZE(ipu_fmt_yuv)) {
+		index -= ARRAY_SIZE(ipu_fmt_yuv);
+		if (index >= ARRAY_SIZE(ipu_fmt_rgb))
+			return -EINVAL;
+		fmt = &ipu_fmt_rgb[index];
+	} else {
+		fmt = &ipu_fmt_yuv[index];
+	}
 
 	strlcpy(f->description, fmt->name, sizeof(f->description));
 	f->pixelformat = fmt->fourcc;
@@ -145,6 +230,30 @@ int ipu_s_fmt(struct file *file, void *fh,
 	pix->colorspace = f->fmt.pix.colorspace;
 
 	return 0;
+}
+
+int ipu_s_fmt_rgb(struct file *file, void *fh,
+		struct v4l2_format *f, struct v4l2_pix_format *pix)
+{
+	struct ipu_fmt *fmt;
+
+	fmt = ipu_find_fmt_rgb(f->fmt.pix.pixelformat);
+	if (!fmt)
+		return -EINVAL;
+
+	return ipu_s_fmt(file, fh, f, pix);
+}
+
+int ipu_s_fmt_yuv(struct file *file, void *fh,
+		struct v4l2_format *f, struct v4l2_pix_format *pix)
+{
+	struct ipu_fmt *fmt;
+
+	fmt = ipu_find_fmt_yuv(f->fmt.pix.pixelformat);
+	if (!fmt)
+		return -EINVAL;
+
+	return ipu_s_fmt(file, fh, f, pix);
 }
 
 int ipu_g_fmt(struct v4l2_format *f, struct v4l2_pix_format *pix)
