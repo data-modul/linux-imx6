@@ -380,14 +380,13 @@ static irqreturn_t vout_handler(int irq, void *context)
 
 	if (vout->status == VOUT_STOPPING) {
 		list_splice_tail_init(&vout->show_list, &vout->idle_list);
-		ipu_dp_disable_channel(vout->dp);
 		spin_unlock_irqrestore(&vout->lock, flags);
+		ipu_dp_disable_channel(vout->dp);
 		ipu_idmac_wait_busy(vout->ipu_ch, 100);
-		spin_lock_irqsave(&vout->lock, flags);
 		ipu_idmac_disable_channel(vout->ipu_ch);
 		ipu_dmfc_disable_channel(vout->dmfc);
 		vout->status = VOUT_IDLE;
-		goto out;
+		return IRQ_HANDLED;
 	}
 
 	if (list_is_singular(&vout->show_list))
@@ -564,10 +563,12 @@ static int vout_videobuf_start_streaming(struct vb2_queue *vq, unsigned int coun
 
 	if (!list_empty(&vout->show_list)) {
 		q = list_first_entry(&vout->show_list, struct vout_queue, list);
+		spin_unlock_irqrestore(&vout->lock, flags);
 		vout_enable(q);
 		vout->status = VOUT_RUNNING;
+	} else {
+		spin_unlock_irqrestore(&vout->lock, flags);
 	}
-	spin_unlock_irqrestore(&vout->lock, flags);
 
 	return 0;
 }
