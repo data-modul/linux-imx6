@@ -54,8 +54,7 @@ obj-$(CONFIG_VIDEO_RENESAS_VSP1)	+= vsp1/
 
 obj-y	+= imx/
 obj-y	+= omap/
-
-obj-$(CONFIG_VIDEO_AM437X_VPFE)		+= am437x/
+obj-y	+= imx/
 
 obj-$(CONFIG_VIDEO_XILINX)		+= xilinx/
 
