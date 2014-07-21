@@ -107,7 +107,10 @@ static int vidioc_querycap(struct file *file, void  *priv,
 {
 	strcpy(cap->driver, "i.MX v4l2 output");
 	cap->version = 0;
-	cap->capabilities = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OVERLAY;
+	cap->device_caps = V4L2_CAP_VIDEO_OUTPUT | 
+			   V4L2_CAP_STREAMING | 
+			   V4L2_CAP_VIDEO_OVERLAY;
+	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
 	cap->card[0] = '\0';
 	cap->bus_info[0] = '\0';
 
@@ -166,10 +169,8 @@ static int ipu_ovl_vidioc_try_fmt_vid_out(struct file *file, void *fh,
  */
 static void ipu_ovl_get_base_resolution(struct vout_data *vout)
 {
-	struct ipu_ch_param *cpmem_base = vout->ipu->cpmem_base + 23;
-
-	vout->width_base = ipu_ch_param_read_field(cpmem_base, IPU_FIELD_FW) + 1;
-	vout->height_base = ipu_ch_param_read_field(cpmem_base, IPU_FIELD_FH) + 1;
+	vout->width_base = ipu_ch_param_read_field(vout->ipu_ch, IPU_FIELD_FW) + 1;
+	vout->height_base = ipu_ch_param_read_field(vout->ipu_ch, IPU_FIELD_FH) + 1;
 }
 
 static void ipu_ovl_sanitize(struct vout_data *vout)
@@ -360,7 +361,6 @@ static irqreturn_t vout_handler(int irq, void *context)
 	struct vout_data *vout = context;
 	unsigned long flags;
 	struct vout_queue *q;
-	struct ipu_ch_param *cpmem = ipu_get_cpmem(vout->ipu_ch);
 	int current_active = ipu_idmac_get_current_buffer(vout->ipu_ch);
 
 	spin_lock_irqsave(&vout->lock, flags);
@@ -401,7 +401,7 @@ static irqreturn_t vout_handler(int irq, void *context)
 	q = list_first_entry(&vout->show_list, struct vout_queue, list);
 
 	current_active = ipu_idmac_get_current_buffer(vout->ipu_ch);
-	ipu_cpmem_set_buffer(cpmem, !current_active, q->image.phys +
+	ipu_cpmem_set_buffer(vout->ipu_ch, !current_active, q->image.phys0 +
 			q->image.rect.left + q->image.pix.width * q->image.rect.top);
 
 	ipu_idmac_select_buffer(vout->ipu_ch, !current_active);
@@ -415,18 +415,17 @@ static int vout_enable(struct vout_queue *q)
 {
 	struct vout_data *vout = q->vout;
 	struct ipu_image *image = &q->image;
-	struct ipu_ch_param *cpmem = ipu_get_cpmem(vout->ipu_ch);
 	int ret;
 
-	ret = ipu_cpmem_set_image(cpmem, image);
+	ret = ipu_cpmem_set_image(vout->ipu_ch, image);
 	if (ret) {
 		dev_err(vout->dev, "setup cpmem failed with %d\n", ret);
 		return ret;
 	}
 	ipu_idmac_set_double_buffer(vout->ipu_ch, 1);
 
-	ipu_cpmem_set_buffer(cpmem, 0, image->phys + image->rect.left + image->pix.width * image->rect.top);
-	ipu_cpmem_set_buffer(cpmem, 1, image->phys + image->rect.left + image->pix.width * image->rect.top);
+	ipu_cpmem_set_buffer(vout->ipu_ch, 0, image->phys0 + image->rect.left + image->pix.width * image->rect.top);
+	ipu_cpmem_set_buffer(vout->ipu_ch, 1, image->phys0 + image->rect.left + image->pix.width * image->rect.top);
 	ipu_idmac_select_buffer(vout->ipu_ch, 0);
 	ipu_idmac_select_buffer(vout->ipu_ch, 1);
 
@@ -519,19 +518,20 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 	if (scale) {
 		image->pix = vout->out_image.pix;
 		image->rect = vout->out_image.rect;
-		image->phys = q->phys;
+		image->phys0 = q->phys;
 
 		image->pix.pixelformat = V4L2_PIX_FMT_UYVY;
 		image->pix.bytesperline = image->pix.width * 2;
 
-		vout->in_image.phys = vb2_dma_contig_plane_dma_addr(vb, 0);
+		vout->in_image.phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 
+		/*FIXME: this shoud be investigated or removed */
 		ipu_image_convert(vout->ipu, &vout->in_image, image,
-			vout_scaler_complete, q);
+			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
 	} else {
 		image->pix = vout->in_image.pix;
 		image->rect = vout->in_image.rect;
-		image->phys = vb2_dma_contig_plane_dma_addr(vb, 0);
+		image->phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 	}
 out:
 	spin_unlock_irqrestore(&vout->lock, flags);
@@ -573,13 +573,13 @@ static int vout_videobuf_start_streaming(struct vb2_queue *vq, unsigned int coun
 	return 0;
 }
 
-static int vout_videobuf_stop_streaming(struct vb2_queue *vq)
+static void vout_videobuf_stop_streaming(struct vb2_queue *vq)
 {
 	struct vout_data *vout = vb2q_to_vout(vq);
 	unsigned long flags;
 
 	if (vout->status == VOUT_IDLE)
-		return 0;
+		return;
 
 	spin_lock_irqsave(&vout->lock, flags);
 
@@ -596,8 +596,6 @@ static int vout_videobuf_stop_streaming(struct vb2_queue *vq)
 	spin_unlock_irqrestore(&vout->lock, flags);
 
 	free_irq(vout->irq, vout);
-
-	return 0;
 }
 
 static int vout_videobuf_init(struct vb2_buffer *vb)
@@ -769,7 +767,7 @@ static int mxc_v4l2out_open(struct file *file)
 	q->drv_priv = vout;
 	q->ops = &vout_videobuf_ops;
 	q->mem_ops = &vb2_dma_contig_memops;
-	q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->buf_struct_size = sizeof(struct vb2_buffer);
 
 	return vb2_queue_init(q);
@@ -840,7 +838,7 @@ static struct v4l2_file_operations mxc_v4l2out_fops = {
 	.owner		= THIS_MODULE,
 	.open		= mxc_v4l2out_open,
 	.release	= mxc_v4l2out_close,
-	.ioctl		= video_ioctl2,
+	.unlocked_ioctl	= video_ioctl2,
 	.mmap		= mxc_v4l2out_mmap,
 };
 
