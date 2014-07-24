@@ -369,6 +369,8 @@ static int vout_enable(struct vout_queue *q)
 	struct ipu_ch_param __iomem *cpmem = ipu_get_cpmem(vout->ipu_ch);
 	int ret;
 
+	ipu_dp_get_channel(vout->dp, &vout->in_csc_saved, &vout->out_csc_saved);
+
 	ipu_dp_setup_channel(vout->dp,
 			ipu_pixelformat_to_colorspace(image->pix.pixelformat),
 			IPUV3_COLORSPACE_RGB);
@@ -553,6 +555,10 @@ static void vout_videobuf_stop_streaming(struct vb2_queue *vq)
 	spin_unlock_irqrestore(&vout->lock, flags);
 
 	free_irq(vout->irq, vout);
+
+	ipu_dp_setup_channel(vout->dp,
+			vout->in_csc_saved,
+			vout->out_csc_saved);
 
 	return;
 }
