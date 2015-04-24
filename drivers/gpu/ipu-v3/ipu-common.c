@@ -1032,11 +1032,6 @@ static struct ipu_platform_reg client_reg[] = {
 		.name = "imx-ipuv3-crtc",
 	}, {
 		.name = "imx-ipuv3-scaler",
-	}, {
-		.pdata = {
-			.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC,
-		},
-		.name = "imx-ipuv3-ovl",
 	},
 };
 
