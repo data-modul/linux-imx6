@@ -169,14 +169,18 @@ static void ipu_ovl_get_base_resolution(struct vout_data *vout)
 	vout->height_base = ipu_ch_param_read_field(vout->ipu_ch, IPU_FIELD_FH) + 1;
 }
 
-static void ipu_ovl_sanitize(struct vout_data *vout)
+static int ipu_ovl_sanitize(struct vout_data *vout)
 {
 	struct ipu_image *in = &vout->in_image;
 	struct ipu_image *out = &vout->out_image;
 	struct v4l2_window *win = &vout->win;
-	struct v4l2_rect *crop = &vout->crop;
 
 	ipu_ovl_get_base_resolution(vout);
+
+	if (vout->width_base == 1 || vout->height_base == 1) {
+		dev_err(vout->dev, "get base resolution failed.");
+		return -EINVAL;
+	}
 
 	/* Do not allow to leave base framebuffer for now */
 	if (win->w.left < 0)
@@ -189,10 +193,10 @@ static void ipu_ovl_sanitize(struct vout_data *vout)
 	dev_info(vout->dev, "start: win:  %dx%d@%dx%d\n",
 			win->w.width, win->w.height, win->w.left, win->w.top);
 
-	in->rect.left = crop->left;
-	in->rect.width = crop->width;
-	in->rect.top = crop->top;
-	in->rect.height = crop->height;
+	in->rect.left = win->w.left;
+	in->rect.width = win->w.width;
+	in->rect.top = win->w.top;
+	in->rect.height = win->w.height;
 
 	out->pix.width = win->w.width;
 	out->pix.height = win->w.height;
@@ -201,15 +205,14 @@ static void ipu_ovl_sanitize(struct vout_data *vout)
 	out->rect.left = win->w.left;
 	out->rect.top = win->w.top;
 
-	out->rect.left = 0;
-	out->rect.top = 0;
-
 	dev_dbg(vout->dev, "result in: %dx%d crop: %dx%d@%dx%d\n",
 			in->pix.width, in->pix.height, in->rect.width,
 			in->rect.height, in->rect.left, in->rect.top);
 	dev_dbg(vout->dev, "result out: %dx%d crop: %dx%d@%dx%d\n",
 			out->pix.width, out->pix.height, out->rect.width,
 			out->rect.height, out->rect.left, out->rect.top);
+
+	return 0;
 }
 
 static int ipu_ovl_vidioc_s_fmt_vid_out(struct file *file, void *fh,
@@ -234,9 +237,7 @@ static int ipu_ovl_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	vout->crop.width = pix->width;
 	vout->crop.height = pix->height;
 
-	ipu_ovl_sanitize(vout);
-
-	return 0;
+	return ipu_ovl_sanitize(vout);
 }
 
 static int ipu_ovl_vidioc_g_crop(struct file *file, void *fh,
@@ -258,9 +259,7 @@ static int ipu_ovl_vidioc_s_crop(struct file *file, void *fh,
 
 	vout->crop = crop->c;
 
-	ipu_ovl_sanitize(vout);
-
-	return 0;
+	return ipu_ovl_sanitize(vout);
 }
 
 static int vout_videobuf_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,

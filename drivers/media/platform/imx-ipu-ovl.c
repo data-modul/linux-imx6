@@ -119,7 +119,7 @@ static void ipu_ovl_get_base_resolution(struct vout_data *vout)
 }
 
 
-static void ipu_ovl_sanitize(struct vout_data *vout)
+static int ipu_ovl_sanitize(struct vout_data *vout)
 {
 	struct ipu_image *in = &vout->in_image;
 	struct ipu_image *out = &vout->out_image;
@@ -127,6 +127,11 @@ static void ipu_ovl_sanitize(struct vout_data *vout)
 	struct v4l2_window *win = &vout->win;
 
 	ipu_ovl_get_base_resolution(vout);
+
+	if (vout->width_base == 1 || vout->height_base == 1) {
+		dev_err(vout->dev, "get base resolution failed.");
+		return -EINVAL;
+	}
 
 	/* Do not allow to leave base framebuffer for now */
 	if (win->w.left < 0)
@@ -142,23 +147,22 @@ static void ipu_ovl_sanitize(struct vout_data *vout)
 	if (win->w.top  < 0)
 		win->w.top = 0;
 
-	dev_dbg(vout->dev, "start: win:  %dx%d@%dx%d\n",
-			win->w.width, win->w.height, win->w.left, win->w.top);
+	dev_dbg(vout->dev, "start: win:  %dx%d@%dx%d crop: %dx%d@%dx%d\n",
+			win->w.width, win->w.height, win->w.left, win->w.top,
+			crop->width, crop->height, crop->left, crop->top);
 
 	in->rect.left = crop->left;
 	in->rect.top = crop->top;
 	in->rect.width = crop->width;
 	in->rect.height = crop->height;
 
-	out->pix.width = win->w.width;
-	out->pix.height = win->w.height;
-	out->rect.width = win->w.width;
-	out->rect.height = win->w.height;
-	out->rect.left = win->w.left;
-	out->rect.top = win->w.top;
+	out->pix.width = crop->width;
+	out->pix.height = crop->height;
+	out->rect.width = crop->width;
+	out->rect.height = crop->height;
+	out->rect.left = crop->left;
+	out->rect.top = crop->top;
 
-/*	out->rect.left = 0;
-	out->rect.top = 0;*/
 
 	dev_dbg(vout->dev, "result in: %dx%d crop: %dx%d@%dx%d\n",
 			in->pix.width, in->pix.height, in->rect.width,
@@ -166,6 +170,8 @@ static void ipu_ovl_sanitize(struct vout_data *vout)
 	dev_dbg(vout->dev, "result out: %dx%d crop: %dx%d@%dx%d\n",
 			out->pix.width, out->pix.height, out->rect.width,
 			out->rect.height, out->rect.left, out->rect.top);
+
+	return 0;
 }
 
 
@@ -249,9 +255,7 @@ static int ipu_ovl_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	vout->crop.width = pix->width;
 	vout->crop.height = pix->height;
 
-	ipu_ovl_sanitize(vout);
-
-	return 0;
+	return ipu_ovl_sanitize(vout);
 }
 
 static int ipu_ovl_vidioc_g_fmt_vid_out_overlay(struct file *file, void *fh,
@@ -282,6 +286,7 @@ static int ipu_ovl_vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
 	struct v4l2_window *win = &f->fmt.win;
+	int ret =0;
 
 	win->w.width &= ~0x3;
 	win->w.height &= ~0x1;
@@ -291,14 +296,15 @@ static int ipu_ovl_vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	vout->win.w.left = win->w.left;
 	vout->win.w.top = win->w.top;
 
-	ipu_ovl_sanitize(vout);
+	ret = ipu_ovl_sanitize(vout);
+	if (!ret) {
+		win->w.width = vout->win.w.width;
+		win->w.height = vout->win.w.height;
+		win->w.left = vout->win.w.left;
+		win->w.top = vout->win.w.top;
+	}
 
-	win->w.width = vout->win.w.width;
-	win->w.height = vout->win.w.height;
-	win->w.left = vout->win.w.left;
-	win->w.top = vout->win.w.top;
-
-	return 0;
+	return ret;
 }
 
 static int ipu_ovl_vidioc_g_crop(struct file *file, void *fh,
@@ -320,9 +326,7 @@ static int ipu_ovl_vidioc_s_crop(struct file *file, void *fh,
 
 	vout->crop = crop->c;
 
-	ipu_ovl_sanitize(vout);
-
-	return 0;
+	return ipu_ovl_sanitize(vout);
 }
 
 static int ipu_ovl_vidioc_s_fbuf(struct file *file, void *fh,
