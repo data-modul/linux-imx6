@@ -549,7 +549,7 @@ static void vout_videobuf_stop_streaming(struct vb2_queue *vq)
 	vout->status = VOUT_IDLE;
 
 	list_for_each_entry_safe(q, tmp, &vout->idle_list, list) 
-		if (q->vb->state == VB2_BUF_STATE_ACTIVE) 
+		if (q->vb && q->vb->state == VB2_BUF_STATE_ACTIVE) 
 			vb2_buffer_done(q->vb, VB2_BUF_STATE_ERROR);
 
 	spin_unlock_irqrestore(&vout->lock, flags);
