@@ -730,6 +730,13 @@ static int ipu_ovl_vidioc_g_output(struct file *file, void *priv, unsigned *o)
 	*o = 0;
 	return 0;
 }
+
+static int ipu_ovl_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
+{
+
+	return 0;
+}
+
 static int mxc_v4l2out_open(struct file *file)
 {
 	struct video_device *dev = video_devdata(file);
@@ -863,6 +870,8 @@ static const struct v4l2_ioctl_ops mxc_ioctl_ops = {
 
 	.vidioc_s_fbuf			= ipu_ovl_vidioc_s_fbuf,
 	.vidioc_g_fbuf			= ipu_ovl_vidioc_g_fbuf,
+
+	.vidioc_g_ctrl			= ipu_ovl_vidioc_g_ctrl,
 
 #ifdef CONFIG_VIDEO_V4L1_COMPAT
 	.vidiocgmbuf			= vidiocgmbuf,
