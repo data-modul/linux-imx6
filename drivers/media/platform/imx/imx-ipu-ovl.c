@@ -26,12 +26,12 @@
 #include <linux/interrupt.h>
 #include <media/v4l2-dev.h>
 #include <asm/poll.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 #include <video/imx-ipu-v3.h>
-#include "../../gpu/ipu-v3/ipu-prv.h"
+#include "../../../gpu/ipu-v3/ipu-prv.h"
 #include <drm/imx-ipu-v3-vout.h>
 
 #include <media/v4l2-dev.h>
@@ -89,8 +89,11 @@ struct vout_data {
 
 	struct ipu_image	out_image; /* output image */
 	struct ipu_image	in_image; /* input image */
-	struct v4l2_window	win; /* user selected output window (after scaler) */
-	struct v4l2_rect	crop; /* cropping rectangle in the input image */
+
+	/* user selected output window (after scaler) */
+	struct v4l2_window	win;
+	/* cropping rectangle in the input image */
+	struct v4l2_rect	crop;
 
 	struct list_head	idle_list;
 	struct list_head	scale_list;
@@ -286,7 +289,7 @@ static int ipu_ovl_vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
 	struct v4l2_window *win = &f->fmt.win;
-	int ret =0;
+	int ret = 0;
 
 	win->w.width &= ~0x3;
 	win->w.height &= ~0x1;
@@ -344,7 +347,8 @@ static int ipu_ovl_vidioc_g_fbuf(struct file *file, void *fh,
 	return 0;
 }
 
-static int vout_videobuf_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,
+static int vout_videobuf_setup(struct vb2_queue *vq,
+		const struct v4l2_format *fmt,
 		unsigned int *count, unsigned int *num_planes,
 		unsigned int sizes[], void *alloc_ctxs[])
 {
@@ -385,7 +389,7 @@ static irqreturn_t vout_handler(int irq, void *context)
 
 	spin_lock_irqsave(&vout->lock, flags);
 
-	if(vout->status == VOUT_IDLE)
+	if (vout->status == VOUT_IDLE)
 		goto out;
 
 	if (vout->showing) {
@@ -422,7 +426,7 @@ static irqreturn_t vout_handler(int irq, void *context)
 
 	current_active = ipu_idmac_get_current_buffer(vout->ipu_ch);
 	ipu_cpmem_set_buffer(vout->ipu_ch, !current_active, q->image.phys0 +
-			q->image.rect.left + q->image.pix.width * q->image.rect.top);
+		q->image.rect.left + q->image.pix.width * q->image.rect.top);
 
 	ipu_idmac_select_buffer(vout->ipu_ch, !current_active);
 out:
@@ -444,8 +448,12 @@ static int vout_enable(struct vout_queue *q)
 	}
 	ipu_idmac_set_double_buffer(vout->ipu_ch, 1);
 
-	ipu_cpmem_set_buffer(vout->ipu_ch, 0, image->phys0 + image->rect.left + image->pix.width * image->rect.top);
-	ipu_cpmem_set_buffer(vout->ipu_ch, 1, image->phys0 + image->rect.left + image->pix.width * image->rect.top);
+	ipu_cpmem_set_buffer(vout->ipu_ch, 0,
+			image->phys0 + image->rect.left +
+			image->pix.width * image->rect.top);
+	ipu_cpmem_set_buffer(vout->ipu_ch, 1,
+			image->phys0 + image->rect.left +
+			image->pix.width * image->rect.top);
 	ipu_idmac_select_buffer(vout->ipu_ch, 0);
 	ipu_idmac_select_buffer(vout->ipu_ch, 1);
 
@@ -453,7 +461,8 @@ static int vout_enable(struct vout_queue *q)
 
 	ret = ipu_dmfc_init_channel(vout->dmfc, image->pix.width);
 	if (ret) {
-		dev_err(vout->dev, "initializing dmfc channel failed with %d\n", ret);
+		dev_err(vout->dev,
+			"initializing dmfc channel failed with %d\n", ret);
 		return ret;
 	}
 
@@ -515,13 +524,15 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 	q = list_first_entry(&vout->idle_list, struct vout_queue, list);
 
 	if (vout->in_image.rect.width == vout->out_image.rect.width &&
-			vout->in_image.rect.height == vout->out_image.rect.height) {
+		vout->in_image.rect.height == vout->out_image.rect.height) {
 		int i = 0;
 		struct list_head *pos;
+
 		scale = 0;
 		list_for_each(pos, &vout->show_list)
 			i++;
-		if (!list_empty(&vout->show_list) && !list_is_singular(&vout->show_list)) {
+		if (!list_empty(&vout->show_list) &&
+		    !list_is_singular(&vout->show_list)) {
 			vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
 			goto out;
 		}
@@ -544,7 +555,7 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 
 		vout->in_image.phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 
-		/*FIXME: this shoud be investigated or removed */
+		/*FIXME: this should be investigated or removed */
 		ipu_image_convert(vout->ipu, &vout->in_image, image,
 			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
 	} else {
@@ -560,7 +571,8 @@ static void vout_videobuf_release(struct vb2_buffer *vb)
 {
 }
 
-static int vout_videobuf_start_streaming(struct vb2_queue *vq, unsigned int count)
+static int vout_videobuf_start_streaming(struct vb2_queue *vq,
+				unsigned int count)
 {
 	struct vout_data *vout = vb2q_to_vout(vq);
 	struct vout_queue *q;
@@ -570,7 +582,8 @@ static int vout_videobuf_start_streaming(struct vb2_queue *vq, unsigned int coun
 	if (vout->status != VOUT_IDLE)
 		return -EINVAL;
 
-	vout->irq = ipu_idmac_channel_irq(vout->ipu, vout->ipu_ch, IPU_IRQ_NFACK);
+	vout->irq = ipu_idmac_channel_irq(vout->ipu,
+					vout->ipu_ch, IPU_IRQ_NFACK);
 	ret = request_threaded_irq(vout->irq, NULL, vout_handler, IRQF_ONESHOT,
 			"imx-ipu-ovl", vout);
 	if (ret)
@@ -605,7 +618,8 @@ static void vout_videobuf_stop_streaming(struct vb2_queue *vq)
 
 	vout->status = VOUT_STOPPING;
 
-	while (!list_empty(&vout->scale_list) || !list_empty(&vout->show_list)) {
+	while (!list_empty(&vout->scale_list) ||
+	       !list_empty(&vout->show_list)) {
 		spin_unlock_irqrestore(&vout->lock, flags);
 		schedule();
 		spin_lock_irqsave(&vout->lock, flags);
@@ -654,7 +668,8 @@ static int ipu_ovl_vidioc_reqbufs(struct file *file, void *priv,
 	return ret;
 }
 
-static int ipu_ovl_vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
+static int ipu_ovl_vidioc_querybuf(struct file *file, void *fh,
+			struct v4l2_buffer *buf)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -662,7 +677,8 @@ static int ipu_ovl_vidioc_querybuf(struct file *file, void *fh, struct v4l2_buff
 	return vb2_querybuf(&vout->vidq, buf);
 }
 
-static int ipu_ovl_vidioc_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
+static int ipu_ovl_vidioc_qbuf(struct file *file, void *fh,
+			struct v4l2_buffer *buf)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -670,7 +686,8 @@ static int ipu_ovl_vidioc_qbuf(struct file *file, void *fh, struct v4l2_buffer *
 	return vb2_qbuf(&vout->vidq, buf);
 }
 
-static int ipu_ovl_vidioc_expbuf(struct file *file, void *fh, struct v4l2_exportbuffer *eb)
+static int ipu_ovl_vidioc_expbuf(struct file *file, void *fh,
+			struct v4l2_exportbuffer *eb)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -678,7 +695,8 @@ static int ipu_ovl_vidioc_expbuf(struct file *file, void *fh, struct v4l2_export
 	return vb2_expbuf(&vout->vidq, eb);
 }
 
-static int ipu_ovl_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
+static int ipu_ovl_vidioc_dqbuf(struct file *file, void *fh,
+			struct v4l2_buffer *buf)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -686,7 +704,7 @@ static int ipu_ovl_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer 
 	return vb2_dqbuf(&vout->vidq, buf, file->f_flags & O_NONBLOCK);
 }
 
-static int ipu_ovl_vidioc_create_bufs(struct file*file, void *fh,
+static int ipu_ovl_vidioc_create_bufs(struct file *file, void *fh,
 				      struct v4l2_create_buffers *create)
 {
 	struct video_device *dev = video_devdata(file);
@@ -695,7 +713,8 @@ static int ipu_ovl_vidioc_create_bufs(struct file*file, void *fh,
 	return vb2_create_bufs(&vout->vidq, create);
 }
 
-static int ipu_ovl_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
+static int ipu_ovl_vidioc_streamon(struct file *file, void *fh,
+			enum v4l2_buf_type i)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -703,7 +722,8 @@ static int ipu_ovl_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_ty
 	return vb2_streamon(&vout->vidq, i);
 }
 
-static int ipu_ovl_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
+static int ipu_ovl_vidioc_streamoff(struct file *file, void *fh,
+			enum v4l2_buf_type i)
 {
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
@@ -731,7 +751,8 @@ static int ipu_ovl_vidioc_g_output(struct file *file, void *priv, unsigned *o)
 	return 0;
 }
 
-static int ipu_ovl_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
+static int ipu_ovl_vidioc_g_ctrl(struct file *file, void *fh,
+			struct v4l2_control *ctrl)
 {
 
 	return 0;
@@ -769,7 +790,8 @@ static int mxc_v4l2out_open(struct file *file)
 
 	ret = ipu_dmfc_alloc_bandwidth(vout->dmfc, 1920 * 1080 * 70, 64);
 	if (ret) {
-		dev_err(vout->dev, "allocating dmfc bandwidth failed with %d\n", ret);
+		dev_err(vout->dev,
+			"allocating dmfc bandwidth failed with %d\n", ret);
 		goto failed_bw;
 	}
 
@@ -784,7 +806,7 @@ static int mxc_v4l2out_open(struct file *file)
 	for (i = 0; i < NUMBUFS; i++) {
 		struct vout_queue *q;
 
-		q = kzalloc(sizeof (*q), GFP_KERNEL);
+		q = kzalloc(sizeof(*q), GFP_KERNEL);
 		if (!q) {
 			ipu_dmfc_free_bandwidth(vout->dmfc);
 			return -ENOMEM;

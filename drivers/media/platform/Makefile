@@ -20,10 +20,6 @@ obj-$(CONFIG_VIDEO_TI_VPE)		+= ti-vpe/
 
 obj-$(CONFIG_VIDEO_MX2_EMMAPRP)		+= mx2_emmaprp.o
 obj-$(CONFIG_VIDEO_CODA) 		+= coda/
-obj-$(CONFIG_VIDEO_IMX_IPUV3_CSI)	+= imx-ipuv3-csi.o
-obj-$(CONFIG_VIDEO_IMX_IPU_OVL)		+= imx-ipu-ovl.o
-obj-$(CONFIG_VIDEO_IMX_IPU_VDIC)	+= imx-ipu-vdic.o
-obj-$(CONFIG_VIDEO_IMX_IPU_VOUT)	+= imx-ipu-vout.o
 
 obj-$(CONFIG_VIDEO_SH_VEU)		+= sh_veu.o
 
