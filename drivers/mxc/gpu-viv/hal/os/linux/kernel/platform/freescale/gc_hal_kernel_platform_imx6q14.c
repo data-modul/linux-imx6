@@ -68,6 +68,7 @@
 #   include <linux/platform_device.h>
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
 #include <mach/viv_gpu.h>
 #else
@@ -78,8 +79,9 @@
 #include <linux/busfreq-imx6.h>
 #include <linux/reset.h>
 #else
-#include <linux/busfreq-imx.h>
+#include <linux/busfreq-imx6.h>
 #include <linux/reset.h>
+#endif
 #endif
 #endif
 
@@ -93,6 +95,7 @@
 #include <linux/regulator/consumer.h>
 
 #ifdef CONFIG_DEVICE_THERMAL
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 #include <linux/device_cooling.h>
 #define REG_THERMAL_NOTIFIER(a) register_devfreq_cooling_notifier(a);
@@ -103,6 +106,10 @@ extern int unregister_thermal_notifier(struct notifier_block *nb);
 #define REG_THERMAL_NOTIFIER(a) register_thermal_notifier(a);
 #define UNREG_THERMAL_NOTIFIER(a) unregister_thermal_notifier(a);
 #endif
+#endif
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,0,0)
+#include <linux/reset.h>
 #endif
 
 #ifndef gcdFSL_CONTIGUOUS_SIZE
@@ -261,7 +268,8 @@ _ShrinkMemory(
 }
 #endif
 
-#if gcdENABLE_FSCALE_VAL_ADJUST && defined(CONFIG_DEVICE_THERMAL)
+#if gcdENABLE_FSCALE_VAL_ADJUST
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 static int thermal_hot_pm_notify(struct notifier_block *nb, unsigned long event,
        void *dummy)
 {
@@ -305,6 +313,7 @@ static int thermal_hot_pm_notify(struct notifier_block *nb, unsigned long event,
 static struct notifier_block thermal_hot_pm_notifier = {
     .notifier_call = thermal_hot_pm_notify,
     };
+#endif
 
 static ssize_t show_gpu3DMinClock(struct device_driver *dev, char *buf)
 {
@@ -630,7 +639,9 @@ _GetPower(
 
 #if gcdENABLE_FSCALE_VAL_ADJUST
     pdevice = Platform->device;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
     REG_THERMAL_NOTIFIER(&thermal_hot_pm_notifier);
+#endif
     {
         int ret = 0;
         ret = driver_create_file(pdevice->dev.driver, &driver_attr_gpu3DMinClock);
@@ -693,7 +704,9 @@ _PutPower(
 #endif
 
 #if gcdENABLE_FSCALE_VAL_ADJUST
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
     UNREG_THERMAL_NOTIFIER(&thermal_hot_pm_notifier);
+#endif
 
     driver_remove_file(pdevice->dev.driver, &driver_attr_gpu3DMinClock);
 #endif
@@ -869,6 +882,7 @@ _SetClock(
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
 #ifdef CONFIG_PM
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 static int gpu_runtime_suspend(struct device *dev)
 {
     release_bus_freq(BUS_FREQ_HIGH);
@@ -880,6 +894,7 @@ static int gpu_runtime_resume(struct device *dev)
     request_bus_freq(BUS_FREQ_HIGH);
     return 0;
 }
+#endif
 
 static struct dev_pm_ops gpu_pm_ops;
 #endif
@@ -905,8 +920,10 @@ _AdjustDriver(
 
     /* Add runtime PM callback. */
 #ifdef CONFIG_PM
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
     gpu_pm_ops.runtime_suspend = gpu_runtime_suspend;
     gpu_pm_ops.runtime_resume = gpu_runtime_resume;
+#endif
     gpu_pm_ops.runtime_idle = NULL;
 #endif
 
