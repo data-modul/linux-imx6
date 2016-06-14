@@ -183,6 +183,7 @@ int ipu_idmac_channel_irq(struct ipu_soc *ipu, struct ipuv3_channel *channel,
 int ipu_get_num(struct ipu_soc *ipu);
 void ipu_set_csi_src_mux(struct ipu_soc *ipu, int csi_id, bool mipi_csi2);
 void ipu_set_ic_src_mux(struct ipu_soc *ipu, int csi_id, bool vdi);
+void ipu_set_vdi_src_mux(struct ipu_soc *ipu, bool csi);
 void ipu_dump(struct ipu_soc *ipu);
 
 /*
