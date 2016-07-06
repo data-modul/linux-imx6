@@ -328,6 +328,7 @@ int ipu_csi_set_mipi_datatype(struct ipu_csi *csi, u32 vc,
 			      struct v4l2_mbus_framefmt *mbus_fmt);
 int ipu_csi_set_skip_smfc(struct ipu_csi *csi, u32 skip,
 			  u32 max_ratio, u32 id);
+int ipu_csi_set_src(struct ipu_csi *csi, u32 vc, bool select_mipi_csi2);
 int ipu_csi_set_dest(struct ipu_csi *csi, enum ipu_csi_dest csi_dest);
 int ipu_csi_enable(struct ipu_csi *csi);
 int ipu_csi_disable(struct ipu_csi *csi);
