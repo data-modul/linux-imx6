@@ -1,2 +1,22 @@
 config VIDEO_IMX_IPU_COMMON
 	tristate
+
+config VIDEO_IMX
+	tristate "i.MX5/6 V4L2 devices"
+	depends on VIDEO_V4L2 && ARCH_MXC && IMX_IPUV3_CORE
+	default y
+	---help---
+	  Say yes here to enable support for video4linux drivers for
+	  the i.MX5/6 SOC.
+
+config VIDEO_IMX_M2M
+	tristate "i.MX5/6 Mem2Mem driver"
+	depends on VIDEO_IMX && VIDEO_DEV
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_MEM2MEM_DEV
+	default y
+	---help---
+	  Use the IPU IC Post-processor on the i.MX5/6 SoC for mem2mem
+	  processing of buffers. Operations include scaling, rotation,
+	  and color space conversion. The driver implements tiling to
+	  support scaling up to 4096x4096.
