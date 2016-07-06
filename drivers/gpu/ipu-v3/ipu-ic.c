@@ -628,6 +628,16 @@ unlock:
 }
 EXPORT_SYMBOL_GPL(ipu_ic_task_idma_init);
 
+int ipu_ic_set_src(struct ipu_ic *ic, int csi_id, bool vdi)
+{
+	struct ipu_ic_priv *priv = ic->priv;
+
+	ipu_set_ic_src_mux(priv->ipu, csi_id, vdi);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ipu_ic_set_src);
+
 static void ipu_irt_enable(struct ipu_ic *ic)
 {
 	struct ipu_ic_priv *priv = ic->priv;

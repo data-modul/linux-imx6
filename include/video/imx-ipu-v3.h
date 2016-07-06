@@ -361,6 +361,7 @@ void ipu_ic_task_disable(struct ipu_ic *ic);
 int ipu_ic_task_idma_init(struct ipu_ic *ic, struct ipuv3_channel *channel,
 			  u32 width, u32 height, int burst_size,
 			  enum ipu_rotate_mode rot);
+int ipu_ic_set_src(struct ipu_ic *ic, int csi_id, bool vdi);
 int ipu_ic_enable(struct ipu_ic *ic);
 int ipu_ic_disable(struct ipu_ic *ic);
 struct ipu_ic *ipu_ic_get(struct ipu_soc *ipu, enum ipu_ic_task task);
