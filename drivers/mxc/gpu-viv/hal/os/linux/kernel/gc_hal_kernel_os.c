@@ -66,6 +66,11 @@
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,23)
 #include <linux/math64.h>
 #endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35)
+#include <../mm/dma.h>
+#endif
+
 #include <linux/delay.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)
