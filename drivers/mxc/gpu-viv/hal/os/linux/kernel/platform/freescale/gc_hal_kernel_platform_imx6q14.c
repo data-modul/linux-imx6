@@ -367,7 +367,7 @@ MODULE_DEVICE_TABLE(of, mxs_gpu_dt_ids);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 struct contiguous_mem_pool {
-    struct dma_attrs attrs;
+    unsigned long attrs;
     dma_addr_t phys;
     void *virt;
     size_t size;
@@ -484,8 +484,9 @@ gckPLATFORM_AdjustParam(
 
     Args->gpu3DMinClock = initgpu3DMinClock;
 
-  if(Args->physSize == 0)
+  if(Args->physSize == 0) {
     Args->physSize = 0x80000000;
+  }
 
     return gcvSTATUS_OK;
 }
