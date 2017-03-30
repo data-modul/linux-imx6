@@ -319,6 +319,41 @@ static void ipu_put_resources(struct ipu_crtc *ipu_crtc)
 		ipu_di_put(ipu_crtc->di);
 }
 
+#include <drm/imx-ipu-v3-vout.h>
+
+static int ipu_vout_init(struct ipu_crtc *ipu_crtc)
+{
+	struct ipu_soc *ipu = dev_get_drvdata(ipu_crtc->dev->parent);
+	struct ipu_vout_pdata pdata;
+	struct platform_device *pdev;
+
+	pdata.ipu = ipu;
+	pdata.dp = ipu_crtc->plane[0]->dp;
+	pdata.ipu_ch = ipu_crtc->plane[0]->ipu_ch;
+
+	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-vout",
+		imx_drm_crtc_id(ipu_crtc->imx_crtc), &pdata, sizeof(pdata));
+
+	return 0;
+}
+
+static int ipu_ovl_init(struct ipu_crtc *ipu_crtc)
+{
+	struct ipu_soc *ipu = dev_get_drvdata(ipu_crtc->dev->parent);
+	struct ipu_ovl_pdata pdata;
+	struct platform_device *pdev;
+
+	pdata.ipu = ipu;
+	pdata.dp = ipu_crtc->plane[0]->dp;
+	pdata.ipu_ch = ipu_crtc->plane[0]->ipu_ch;
+	pdata.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC;
+
+	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-ovl",
+		imx_drm_crtc_id(ipu_crtc->imx_crtc), &pdata, sizeof(pdata));
+
+	return 0;
+}
+
 static int ipu_get_resources(struct ipu_crtc *ipu_crtc,
 		struct ipu_client_platformdata *pdata)
 {
@@ -382,6 +417,10 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 		goto err_remove_crtc;
 	}
 
+	if (pdata->dp >= 0) {
+		ipu_vout_init(ipu_crtc);
+		ipu_ovl_init(ipu_crtc);
+	}
 	/* If this crtc is using the DP, add an overlay plane */
 	if (pdata->dp >= 0 && pdata->dma[1] > 0) {
 		ipu_crtc->plane[1] = ipu_plane_init(drm, ipu, pdata->dma[1],

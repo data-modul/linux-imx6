@@ -1030,6 +1030,8 @@ static struct ipu_platform_reg client_reg[] = {
 			.dma[1] = -EINVAL,
 		},
 		.name = "imx-ipuv3-crtc",
+	}, {
+		.name = "imx-ipuv3-scaler",
 	},
 };
 
