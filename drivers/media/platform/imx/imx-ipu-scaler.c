@@ -162,7 +162,7 @@ static void ipu_scaler_work(struct work_struct *work)
 	struct ipu_scale_ctx *ctx = container_of(work, struct ipu_scale_ctx,
 						 work);
 	struct ipu_scale_dev *ipu_scaler = ctx->ipu_scaler;
-	struct vb2_buffer *src_buf, *dst_buf;
+	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct ipu_scale_q_data *q_data;
 	struct v4l2_pix_format *pix;
 	struct ipu_image in, out;
@@ -183,8 +183,8 @@ static void ipu_scaler_work(struct work_struct *work)
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 
-	in.phys0 = vb2_dma_contig_plane_dma_addr(src_buf, 0);
-	out.phys0 = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
+	in.phys0 = vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
+	out.phys0 = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
 
 	if (!ctx->num_tiles) {
 		q_data = get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
@@ -230,8 +230,8 @@ static void ipu_scaler_work(struct work_struct *work)
 	src_buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
 
-	dst_buf->v4l2_buf.timestamp = src_buf->v4l2_buf.timestamp;
-	dst_buf->v4l2_buf.timecode = src_buf->v4l2_buf.timecode;
+	dst_buf->timestamp = src_buf->timestamp;
+	dst_buf->timecode = src_buf->timecode;
 
 	spin_lock_irqsave(&ipu_scaler->irqlock, flags);
 	v4l2_m2m_buf_done(src_buf, err ? VB2_BUF_STATE_ERROR :
@@ -517,7 +517,7 @@ static void ipu_scale_skip_run(struct work_struct *work)
  */
 
 static int ipu_scale_queue_setup(struct vb2_queue *vq,
-		const struct v4l2_format *fmt,
+		const void *parg,
 		unsigned int *nbuffers,
 		unsigned int *nplanes, unsigned int sizes[],
 		void *alloc_ctxs[])
@@ -592,14 +592,15 @@ static int ipu_scale_buf_prepare(struct vb2_buffer *vb)
 static void ipu_scale_buf_queue(struct vb2_buffer *vb)
 {
 	struct ipu_scale_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 
-	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vb);
+	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vbuf);
 }
 
 static void ipu_scale_stop_streaming(struct vb2_queue *q)
 {
 	struct ipu_scale_ctx *ctx = vb2_get_drv_priv(q);
-	struct vb2_buffer *buf;
+	struct vb2_v4l2_buffer *buf;
 
 	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
 		while ((buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx)))

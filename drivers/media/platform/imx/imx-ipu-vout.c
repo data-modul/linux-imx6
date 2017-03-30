@@ -271,7 +271,7 @@ static int ipu_ovl_vidioc_s_crop(struct file *file, void *fh,
 }
 
 static int vout_videobuf_setup(struct vb2_queue *vq,
-		const struct v4l2_format *fmt,
+		const void *parg,
 		unsigned int *count, unsigned int *num_planes,
 		unsigned int sizes[], void *alloc_ctxs[])
 {
