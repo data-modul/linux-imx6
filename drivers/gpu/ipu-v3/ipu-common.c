@@ -1006,12 +1006,7 @@ static struct ipu_platform_reg client_reg[] = {
 		},
 		.name = "imx-ipuv3-camera",
 	}, {
-		.pdata = {
-			.csi = 1,
-			.dma[0] = IPUV3_CHANNEL_CSI1,
-			.dma[1] = -EINVAL,
-		},
-		.name = "imx-ipuv3-camera",
+		.name = "imx-ipuv3-scaler",
 	}, {
 		.pdata = {
 			.di = 0,
@@ -1030,8 +1025,6 @@ static struct ipu_platform_reg client_reg[] = {
 			.dma[1] = -EINVAL,
 		},
 		.name = "imx-ipuv3-crtc",
-	}, {
-		.name = "imx-ipuv3-scaler",
 	},
 };
 
