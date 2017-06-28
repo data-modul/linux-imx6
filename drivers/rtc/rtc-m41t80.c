@@ -90,6 +90,9 @@ struct m41t80_data {
 	struct rtc_device *rtc;
 };
 
+static int m41t80_set_datetime(struct i2c_client *client, struct rtc_time *tm);
+
+
 static int m41t80_get_datetime(struct i2c_client *client,
 			       struct rtc_time *tm)
 {
@@ -123,6 +126,31 @@ static int m41t80_get_datetime(struct i2c_client *client,
 
 	/* assume 20YY not 19YY, and ignore the Century Bit */
 	tm->tm_year = bcd2bin(buf[M41T80_REG_YEAR]) + 100;
+
+	/*
+	 * quick-fix year 2038 problem (positive values in int32 variable counting seconds from
+	 * 01.01.1970 expires on 19.01.2038 4:14:07),
+	 * to prevent systemd from endless looping "Time has been changed"
+	 *
+	 * set date to 01.01.2000 00:00:00 if year read from rtc > 2038
+	 *
+	 * to be fixed in general (int32 -> int64)
+	 */
+
+	if (bcd2bin(buf[M41T80_REG_YEAR]) > 38)
+	{
+		tm->tm_sec = 0;
+		tm->tm_min = 0;
+		tm->tm_hour = 0;
+		tm->tm_mday = 1;
+		tm->tm_wday = 2;
+		tm->tm_mon = 0;
+		tm->tm_year = 0;
+		printk(KERN_WARNING "year read from rtc > 2038; date set to 01.01.2000 00:00:00\n");
+
+		m41t80_set_datetime(client, tm);
+	}
+
 	return rtc_valid_tm(tm);
 }
 
