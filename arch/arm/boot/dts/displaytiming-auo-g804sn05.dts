@@ -4,13 +4,13 @@
 		clock-frequency = <39800000>;
 		hactive = <800>;
 		vactive = <600>;
-		hfront-porch = <170>;
+		hfront-porch = <28>;
 		hback-porch = <58>;
-		hsync-len = <28>;
+		hsync-len = <170>;
 		hsync-active = <0>;
-		vfront-porch = <18>;
+		vfront-porch = <4>;
 		vback-porch = <6>;
-		vsync-len = <4>;
+		vsync-len = <18>;
 		vsync-active = <0>;
 	};
 };
