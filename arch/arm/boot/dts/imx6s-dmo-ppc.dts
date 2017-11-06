@@ -32,8 +32,7 @@
 
 		pwms = <&pwm1 0 5000000>;
 
-		enable-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
-		power-supply = <&reg_sys_4v2>;
+		enable-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
 
 		brightness-levels = <0 1 10 20 30 40 50 60 70 75 80 90 100>;
 		default-brightness-level = <7>;
@@ -325,7 +324,7 @@
 				MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02	0x0001B0B0
 				/* jog dial inb */
 				MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03	0x0001B0B0
-				/* jog dial push in or PWM2 */
+				/* jog dial push in */
 				MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x0001B0B0
 				/* watchdog */
 				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		0x0001B0B0 /* wdg EN */
@@ -335,11 +334,12 @@
 
 		pinctrl_audmux: audmuxgrp {
 			fsl,pins = <
-				MX6QDL_PAD_CSI0_DAT7__AUD3_RXD		0x0001B0B0
 				MX6QDL_PAD_CSI0_DAT4__AUD3_TXC		0x0001B0B0
 				MX6QDL_PAD_CSI0_DAT5__AUD3_TXD		0x0001B0B0
 				MX6QDL_PAD_CSI0_DAT6__AUD3_TXFS		0x0001B0B0
-			>;
+				MX6QDL_PAD_CSI0_DAT7__AUD3_RXD		0x0001B0B0
+				MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x0001B0B0 /* en pwr audio !!!!! */
+				>;
 		};
 
 		pinctrl_codec: codecgrp {
@@ -360,15 +360,15 @@
 		pinctrl_pwm_backlight: backlightgrp {
 			fsl,pins = <
 				MX6QDL_PAD_GPIO_9__PWM1_OUT		0x0001B0B0
-				MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x0001B0B0
+				MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x0001B0B0 /* en pwr LVDS*/
 			>;
 		};
 
 		pinctrl_ecspi3: ecspi3grp {
 			fsl,pins = <
 				MX6QDL_PAD_DISP0_DAT0__ECSPI3_SCLK	0x0001B0B0
-				MX6QDL_PAD_DISP0_DAT2__ECSPI3_MISO	0x0001B0B0
 				MX6QDL_PAD_DISP0_DAT1__ECSPI3_MOSI	0x0001B0B0
+				MX6QDL_PAD_DISP0_DAT2__ECSPI3_MISO	0x0001B0B0
 				MX6QDL_PAD_DISP0_DAT3__ECSPI3_SS0	0x0001B0B0
 			>;
 		};
@@ -436,6 +436,8 @@
 			fsl,pins = <
 				MX6QDL_PAD_CSI0_DAT14__UART5_TX_DATA	0x0001B0B0
 				MX6QDL_PAD_CSI0_DAT15__UART5_RX_DATA	0x0001B0B0
+				MX6QDL_PAD_CSI0_DAT18__UART5_RTS_B	0x0001B0B0
+				MX6QDL_PAD_CSI0_DAT19__UART5_CTS_B	0x0001B0B0
 			>;
 		};
 
@@ -466,7 +468,7 @@
 			>;
 		};
 
-		pinctrl_usdhc4: usdhc4grp {
+		pinctrl_usdhc4: usdhc4grp { /* eMMC */
 			fsl,pins = <
 				MX6QDL_PAD_SD4_CLK__SD4_CLK		0x1b0b1
 				MX6QDL_PAD_SD4_CMD__SD4_CMD		0x1b0b0
@@ -494,7 +496,7 @@
 				MX6QDL_PAD_KEY_COL4__FLEXCAN2_TX	0x0001B0B0
 			>;
 		};
-		
+
 		pinctrl_fec: fecgrp { /* Ethernet */
 			fsl,pins = <
 				MX6QDL_PAD_ENET_MDC__ENET_MDC		0x0001B0B0
@@ -512,8 +514,8 @@
 				MX6QDL_PAD_RGMII_TD3__RGMII_TD3		0x0001B030
 				MX6QDL_PAD_RGMII_TXC__RGMII_TXC		0x00013030
 				MX6QDL_PAD_RGMII_TX_CTL__RGMII_TX_CTL	0x00013030
-				MX6QDL_PAD_ENET_CRS_DV__GPIO1_IO25	0x0001B0B0
-				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x0001B0B0
+				MX6QDL_PAD_ENET_CRS_DV__GPIO1_IO25	0x0001B0B0 /* enet reset */
+				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x0001B0B0 /* INT */
 			>;
 		};
 
@@ -524,6 +526,15 @@
 			>;
 		};
 	};
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fec>;
+	phy-mode = "rgmii";
+	phy-reset-gpios = <&gpio1 25 0>; /* GPIO1_IO25  */
+	phy-supply = <&sw4_reg>;
+	status = "okay";
 };
 
 &hdmi {
@@ -575,7 +586,6 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart4>;
-	/* fsl,uart-has-rtscts;   if used as uart with hw handshaking */
 	status = "okay";
 };
 
