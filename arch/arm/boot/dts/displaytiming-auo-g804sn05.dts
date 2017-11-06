@@ -1,0 +1,16 @@
+&displaytimings {
+	native-mode = <&timing0>;
+	timing0: AUO-G084SN05-800x600 {
+		clock-frequency = <39800000>;
+		hactive = <800>;
+		vactive = <600>;
+		hfront-porch = <256>;
+		hback-porch = <120>;
+		hsync-len = <440>;
+		hsync-active = <0>;
+		vfront-porch = <28>;
+		vback-porch = <8>;
+		vsync-len = <50>;
+		vsync-active = <0>;
+	};
+};
