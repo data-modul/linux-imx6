@@ -335,7 +335,8 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6qp-sabreauto.dtb \
 	imx6qp-sabresd.dtb \
 	imx6s-dmo-ppc.dtb \
-	imx6s-dmo-ppc-chimei-g070y2.dtb
+	imx6s-dmo-ppc-chimei-g070y2.dtb \
+	imx6s-dmo-ppc-chimei-g101ICE.dtb
 dtb-$(CONFIG_SOC_IMX6SL) += \
 	imx6sl-evk.dtb \
 	imx6sl-evk-btwifi.dtb \
