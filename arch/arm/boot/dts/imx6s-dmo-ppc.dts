@@ -101,7 +101,7 @@
 
 	sound {
 		compatible = "fsl,imx-audio-sgtl5000";
-		model = "imx6s-czm-vertigo-sgtl5000";
+		model = "imx6s-dmo-ppc-sgtl5000";
 		ssi-controller = <&ssi1>;
 		audio-codec = <&codec>;
 		audio-routing =
