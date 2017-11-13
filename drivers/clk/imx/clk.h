@@ -3,6 +3,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/clk-provider.h>
+#include <linux/clk.h>
 
 extern spinlock_t imx_ccm_lock;
 
@@ -50,6 +51,16 @@ struct clk * imx_obtain_fixed_clock(
 
 struct clk *imx_clk_gate_exclusive(const char *name, const char *parent,
 	 void __iomem *reg, u8 shift, u32 exclusive_mask);
+
+
+static inline void imx_clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	int ret = clk_set_rate(clk, rate);
+
+	if (ret)
+		pr_err("failed to set rate of clk %s to %ld: %d\n",
+			__clk_get_name(clk), rate, ret);
+}
 
 struct clk *imx_clk_pfd(const char *name, const char *parent_name,
 		void __iomem *reg, u8 idx);
