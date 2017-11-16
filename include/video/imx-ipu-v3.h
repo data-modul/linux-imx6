@@ -97,20 +97,34 @@ enum ipu_channel_irq {
 #define IPUV3_CHANNEL_CSI2			 2
 #define IPUV3_CHANNEL_CSI3			 3
 #define IPUV3_CHANNEL_VDI_MEM_IC_VF		 5
+#define IPUV3_CHANNEL_MEM_VDI_PREV		 8
+#define IPUV3_CHANNEL_MEM_VDI_CUR		 9
+#define IPUV3_CHANNEL_MEM_VDI_NEXT		10
 #define IPUV3_CHANNEL_MEM_IC_PP			11
 #define IPUV3_CHANNEL_MEM_IC_PRP_VF		12
+#define IPUV3_CHANNEL_VDI_MEM_RECENT		13
 #define IPUV3_CHANNEL_G_MEM_IC_PRP_VF		14
 #define IPUV3_CHANNEL_G_MEM_IC_PP		15
+#define IPUV3_CHANNEL_G_MEM_IC_PRP_VF_ALPHA	17
+#define IPUV3_CHANNEL_G_MEM_IC_PP_ALPHA		18
+#define IPUV3_CHANNEL_MEM_VDI_PLANE1_COMB_ALPHA	19
 #define IPUV3_CHANNEL_IC_PRP_ENC_MEM		20
 #define IPUV3_CHANNEL_IC_PRP_VF_MEM		21
 #define IPUV3_CHANNEL_IC_PP_MEM			22
 #define IPUV3_CHANNEL_MEM_BG_SYNC		23
 #define IPUV3_CHANNEL_MEM_BG_ASYNC		24
+#define IPUV3_CHANNEL_MEM_VDI_PLANE1_COMB	25
+#define IPUV3_CHANNEL_MEM_VDI_PLANE3_COMB	26
 #define IPUV3_CHANNEL_MEM_FG_SYNC		27
 #define IPUV3_CHANNEL_MEM_DC_SYNC		28
 #define IPUV3_CHANNEL_MEM_FG_ASYNC		29
 #define IPUV3_CHANNEL_MEM_FG_SYNC_ALPHA		31
+#define IPUV3_CHANNEL_MEM_FG_ASYNC_ALPHA	33
+#define IPUV3_CHANNEL_DC_MEM_READ		40
 #define IPUV3_CHANNEL_MEM_DC_ASYNC		41
+#define IPUV3_CHANNEL_MEM_DC_COMMAND		42
+#define IPUV3_CHANNEL_MEM_DC_COMMAND2		43
+#define IPUV3_CHANNEL_MEM_DC_OUTPUT_MASK	44
 #define IPUV3_CHANNEL_MEM_ROT_ENC		45
 #define IPUV3_CHANNEL_MEM_ROT_VF		46
 #define IPUV3_CHANNEL_MEM_ROT_PP		47
@@ -118,6 +132,7 @@ enum ipu_channel_irq {
 #define IPUV3_CHANNEL_ROT_VF_MEM		49
 #define IPUV3_CHANNEL_ROT_PP_MEM		50
 #define IPUV3_CHANNEL_MEM_BG_SYNC_ALPHA		51
+#define IPUV3_CHANNEL_MEM_BG_ASYNC_ALPHA	52
 
 int ipu_map_irq(struct ipu_soc *ipu, int irq);
 int ipu_idmac_channel_irq(struct ipu_soc *ipu, struct ipuv3_channel *channel,
@@ -259,6 +274,8 @@ void ipu_dp_disable_channel(struct ipu_dp *dp);
 void ipu_dp_disable(struct ipu_soc *ipu);
 int ipu_dp_setup_channel(struct ipu_dp *dp,
 		enum ipu_color_space in, enum ipu_color_space out);
+int ipu_dp_get_channel(struct ipu_dp *dp,
+		enum ipu_color_space *in, enum ipu_color_space *out);
 int ipu_dp_set_window_pos(struct ipu_dp *, u16 x_pos, u16 y_pos);
 int ipu_dp_set_global_alpha(struct ipu_dp *dp, bool enable, u8 alpha,
 		bool bg_chan);
@@ -302,7 +319,8 @@ int ipu_ic_task_init(struct ipu_ic *ic,
 		     int in_width, int in_height,
 		     int out_width, int out_height,
 		     enum ipu_color_space in_cs,
-		     enum ipu_color_space out_cs);
+		     enum ipu_color_space out_cs,
+		     u32 rsc);
 int ipu_ic_task_graphics_init(struct ipu_ic *ic,
 			      enum ipu_color_space in_g_cs,
 			      bool galpha_en, u32 galpha,
@@ -347,5 +365,36 @@ struct ipu_client_platformdata {
 	int dma[2];
 	struct device_node *of_node;
 };
+
+enum ipu_image_scale_ctrl {
+	IPU_IMAGE_SCALE_ROUND_DOWN,
+	IPU_IMAGE_SCALE_PIXELPERFECT,
+	IPU_IMAGE_SCALE_ROUND_UP,
+};
+
+struct image_convert_ctx;
+
+struct image_convert_ctx *ipu_image_convert_prepare(struct ipu_soc *ipu,
+		struct ipu_image *in, struct ipu_image *out,
+		enum ipu_image_scale_ctrl ctrl, int *num_tiles);
+int ipu_image_convert_run(struct ipu_soc *ipu, struct ipu_image *in,
+		struct ipu_image *out, struct image_convert_ctx *ctx,
+		int num_tiles, void (*complete)(void *ctx, int err),
+		void *complete_context, bool free_ctx);
+
+static inline int ipu_image_convert(struct ipu_soc *ipu, struct ipu_image *in,
+		struct ipu_image *out, void (*complete)(void *ctx, int err),
+		void *complete_context, enum ipu_image_scale_ctrl ctrl)
+{
+	struct image_convert_ctx *ctx;
+	int num_tiles;
+
+	ctx = ipu_image_convert_prepare(ipu, in, out, ctrl, &num_tiles);
+	if (IS_ERR(ctx))
+		return PTR_ERR(ctx);
+
+	return ipu_image_convert_run(ipu, in, out, ctx, num_tiles, complete,
+				     complete_context, true);
+}
 
 #endif /* __DRM_IPU_H__ */
