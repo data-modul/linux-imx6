@@ -450,12 +450,6 @@
 			>;
 		};
 
-		pinctrl_usbh1: usbh1grp {
-			fsl,pins = <
-				MX6QDL_PAD_GPIO_16__GPIO7_IO11		0x0001B0B0 /* usbh rst*/
-			>;
-		};
-
 		pinctrl_usdhc3: usdhc3grp {
 			fsl,pins = <
 				MX6QDL_PAD_SD3_CMD__SD3_CMD		0x1b0b0
@@ -642,7 +636,6 @@
 
 &usbh1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usbh1>;
 	vbus-supply = <&reg_sys_3v3>;
 	dr_mode = "host";
 	status = "okay";
