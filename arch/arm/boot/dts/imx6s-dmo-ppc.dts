@@ -111,6 +111,16 @@
 		mux-int-port = <1>;
 		mux-ext-port = <3>;
 	};
+
+	watchdog {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_watchdog>;
+		compatible = "linux,wdt-gpio";
+		gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+		hw_algo = "level";
+		hw_margin_ms = <512>;
+		status = "okay";
+	};
 };
 
 &audmux {
@@ -327,10 +337,14 @@
 				MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03	0x0001B0B0
 				/* jog dial push in */
 				MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x0001B0B0
-				/* watchdog */
+			>;
+		};
+
+		pinctrl_watchdog: watchdoggrp {
+			fsl,pins = <
 				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		0x0001B0B0 /* wdg EN */
 				MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x0001B0B0 /* wdg kick */
-			>;
+				>;
 		};
 
 		pinctrl_audmux: audmuxgrp {
