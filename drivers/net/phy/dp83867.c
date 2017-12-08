@@ -33,6 +33,7 @@
 /* Extended Registers */
 #define DP83867_RGMIICTL	0x0032
 #define DP83867_RGMIIDCTL	0x0086
+#define DP83867_IO_MUX_CFG	0x0170
 
 #define DP83867_SW_RESET	BIT(15)
 #define DP83867_SW_RESTART	BIT(14)
@@ -64,6 +65,7 @@
 struct dp83867_private {
 	int rx_id_delay;
 	int tx_id_delay;
+	int clk_out;
 	int fifo_depth;
 };
 
@@ -123,6 +125,11 @@ static int dp83867_of_init(struct phy_device *phydev)
 	if (ret)
 		return ret;
 
+	ret = of_property_read_u32(of_node, "ti,clk_out",
+				   &dp83867->clk_out);
+	if (ret)
+		return ret;
+
 	return of_property_read_u32(of_node, "ti,fifo-depth",
 				   &dp83867->fifo_depth);
 }
@@ -159,6 +166,15 @@ static int dp83867_config_init(struct phy_device *phydev)
 		if (ret)
 			return ret;
 	}
+
+	val = phy_read_mmd_indirect(phydev, DP83867_IO_MUX_CFG,
+				    DP83867_DEVADDR, phydev->addr);
+
+	val &= ~(DP83867_CLK_OUT_MASK << DP83867_CLK_OUT_SHIFT);
+	val |= (dp83867->clk_out << DP83867_CLK_OUT_SHIFT);
+
+	phy_write_mmd_indirect(phydev, DP83867_IO_MUX_CFG,
+			       DP83867_DEVADDR, phydev->addr, val);
 
 	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII_ID) &&
 	    (phydev->interface <= PHY_INTERFACE_MODE_RGMII_RXID)) {
