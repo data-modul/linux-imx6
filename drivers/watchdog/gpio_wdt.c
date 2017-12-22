@@ -72,7 +72,11 @@ static int gpio_wdt_start(struct watchdog_device *wdd)
 	priv->state = priv->active_low;
 	gpio_direction_output(priv->gpio, priv->state);
 	set_bit(WDOG_HW_RUNNING, &wdd->status);
-	return gpio_wdt_ping(wdd);
+	
+	gpio_wdt_ping(wdd);
+	msleep(100);
+
+	return 0;
 }
 
 static int gpio_wdt_stop(struct watchdog_device *wdd)
