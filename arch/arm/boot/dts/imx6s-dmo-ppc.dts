@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/net/ti-dp83867.h>
 #include "imx6dl.dtsi"
 
 / {
@@ -111,6 +112,16 @@
 		mux-int-port = <1>;
 		mux-ext-port = <3>;
 	};
+
+	watchdog-gpio {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_watchdog>;
+		compatible = "linux,wdt-gpio";
+		gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+		hw_algo = "level";
+		hw_margin_ms = <306>;
+		status = "okay";
+	};
 };
 
 &audmux {
@@ -189,7 +200,7 @@
 
 			sw2_reg: sw2 {
 				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <3300000>;
+				regulator-max-microvolt = <3000000>;
 				regulator-boot-on;
 			};
 
@@ -327,10 +338,14 @@
 				MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03	0x0001B0B0
 				/* jog dial push in */
 				MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x0001B0B0
-				/* watchdog */
+			>;
+		};
+
+		pinctrl_watchdog: watchdoggrp {
+			fsl,pins = <
 				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		0x0001B0B0 /* wdg EN */
 				MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x0001B0B0 /* wdg kick */
-			>;
+				>;
 		};
 
 		pinctrl_audmux: audmuxgrp {
@@ -487,7 +502,7 @@
 
 		pinctrl_can2: can2grp {
 			fsl,pins = <
-				MX6QDL_PAD_KEY_ROW4__FLEXCAN2_RX	0x000130B0
+				MX6QDL_PAD_KEY_ROW4__FLEXCAN2_RX	0x0001B0B0
 				MX6QDL_PAD_KEY_COL4__FLEXCAN2_TX	0x0001B0B0
 			>;
 		};
@@ -510,7 +525,7 @@
 				MX6QDL_PAD_RGMII_TXC__RGMII_TXC		0x00013030
 				MX6QDL_PAD_RGMII_TX_CTL__RGMII_TX_CTL	0x00013030
 				MX6QDL_PAD_ENET_CRS_DV__GPIO1_IO25	0x0001B0B0 /* enet reset */
-				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x0001B0B0 /* INT */
+				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x0001B0B0 /* INT/PWDN */
 			>;
 		};
 
@@ -527,9 +542,22 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec>;
 	phy-mode = "rgmii";
+	phy-handle = <&ethphy>;
 	phy-reset-gpios = <&gpio1 25 0>; /* GPIO1_IO25  */
 	phy-supply = <&sw4_reg>;
 	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		ethphy: ethernet-phy@0 {
+			reg = <0>;
+			ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_25_NS>;
+			ti,tx-internal-delay = <DP83867_RGMIIDCTL_2_75_NS>;
+			ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
+			ti,clk_out = <DP83867_CLK_OUT_CHAN_A_RX_CLK>;
+		};
+	};
 };
 
 &hdmi {
@@ -602,7 +630,6 @@
 &usdhc3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
-	vmmc-supply = <&sw2_reg>;
 	cd-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
 	/* WP cannot be really used on uSD socket */
 	wp-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
@@ -612,7 +639,6 @@
 &usdhc4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc4>;
-	vmmc-supply = <&sw2_reg>;
 	non-removable;
 	bus-width = <8>;
 	status = "okay";
