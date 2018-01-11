@@ -431,6 +431,8 @@
 			fsl,pins = <
 				MX6QDL_PAD_EIM_D26__UART2_TX_DATA	0x0001B0B0
 				MX6QDL_PAD_EIM_D27__UART2_RX_DATA	0x0001B0B0
+				MX6QDL_PAD_EIM_D28__UART2_CTS_B		0x0001B0B0
+				MX6QDL_PAD_EIM_D28__UART2_RTS_B		0x0001B0B0
 			>;
 		};
 
@@ -591,6 +593,9 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
+	fsl,uart-has-rtscts;
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-high;
 	status = "okay";
 };
 
