@@ -108,7 +108,9 @@
 		audio-codec = <&codec>;
 		audio-routing =
 			"Line Out Jack", "LINE_OUT",
-			"Headphone Jack", "HP_OUT";
+			"Headphone Jack", "HP_OUT",
+			"Mic Jack", "MIC_IN",
+			"Mic Bias", "Mic Jack";
 		mux-int-port = <1>;
 		mux-ext-port = <3>;
 	};
@@ -290,7 +292,7 @@
 
 		VDDA-supply = <&reg_sys_3v3>;
 		VDDIO-supply = <&reg_sys_3v3>;
-		VDDD-supply = <&vgen4_reg>;
+		VDDD-supply = <&sw4_reg>;
 	};
 
 	rtc: m41t62@86 {
