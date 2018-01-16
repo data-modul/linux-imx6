@@ -198,20 +198,21 @@ static int dp83867_config_init(struct phy_device *phydev)
 	}
 
 	val = phy_read_mmd_indirect(phydev, DP83867_IO_MUX_CFG,
-				    DP83867_DEVADDR, phydev->addr);
+				    DP83867_DEVADDR);
 
 	val &= ~(DP83867_CLK_OUT_MASK << DP83867_CLK_OUT_SHIFT);
 	val |= (dp83867->clk_out << DP83867_CLK_OUT_SHIFT);
 
 	phy_write_mmd_indirect(phydev, DP83867_IO_MUX_CFG,
-			       DP83867_DEVADDR, phydev->addr, val);
+			       DP83867_DEVADDR, val);
 
-	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII_ID) &&
-	    (phydev->interface <= PHY_INTERFACE_MODE_RGMII_RXID)) {
+	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII) &&
+	    (phydev->interface <= PHY_INTERFACE_MODE_RGMII_TXID)) {
 		val = phy_read_mmd_indirect(phydev, DP83867_RGMIICTL,
 					    DP83867_DEVADDR);
 
-		if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID)
+		if (	(phydev->interface == PHY_INTERFACE_MODE_RGMII)
+			||	(phydev->interface == PHY_INTERFACE_MODE_RGMII_ID))
 			val |= (DP83867_RGMII_TX_CLK_DELAY_EN | DP83867_RGMII_RX_CLK_DELAY_EN);
 
 		if (phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID)
