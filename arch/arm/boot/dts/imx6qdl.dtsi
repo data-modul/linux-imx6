@@ -1048,6 +1048,19 @@
 				status = "disabled";
 			};
 
+			hdmi_ddc: i2c@00120000 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx6q-hdmi-ddc";
+				reg = <0x00120000 0x8000>;
+				interrupts-extended =
+					<&intc 0 115 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clks IMX6QDL_CLK_HDMI_IAHB>,
+					 <&clks IMX6QDL_CLK_HDMI_ISFR>;
+				clock-names = "iahb", "isfr";
+				status = "disabled";
+			};
+
 			i2c1: i2c@021a0000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
