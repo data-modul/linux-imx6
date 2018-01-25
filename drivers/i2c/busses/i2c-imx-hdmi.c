@@ -87,6 +87,8 @@
 #define HDMI_I2CM_CTLINT_NAC_MASK		BIT(6)
 #define HDMI_I2CM_CTLINT_NAC_POL		BIT(7)
 
+#define IMX_HDMI_I2C_STANDARD_FREQ		100000
+#define IMX_HDMI_I2C_FAST_FREQ			400000
 
 struct imx_hdmi_i2c {
 	struct i2c_adapter	adap;
@@ -102,6 +104,8 @@ struct imx_hdmi_i2c {
 
 	u8			slave_reg;
 	bool			is_regaddr;
+
+	u32			clk_hz;
 };
 
 static void hdmi_writeb(struct imx_hdmi_i2c *pd, unsigned int reg, u8 value)
@@ -127,8 +131,11 @@ static void imx_hdmi_hwinit(struct imx_hdmi_i2c *pd)
 
 	spin_lock_irqsave(&pd->lock, flags);
 
-	/* Set Fast Mode speed */
-	hdmi_writeb(pd, HDMI_I2CM_DIV, 0x0b);
+	/* Set Mode speed */
+	if (pd->clk_hz == IMX_HDMI_I2C_FAST_FREQ) /* Set Fast Mode speed */
+		hdmi_writeb(pd, HDMI_I2CM_DIV, 0x0b);
+	else /* Set Standard Mode speed */
+		hdmi_writeb(pd, HDMI_I2CM_DIV, 0x03);
 
 	/* Software reset */
 	hdmi_writeb(pd, HDMI_I2CM_SOFTRSTZ, 0x00);
@@ -341,6 +348,28 @@ static struct i2c_algorithm imx_hdmi_algorithm = {
 	.functionality	= i2c_func,
 };
 
+static int imx_hdmi_i2c_get_frequency(struct platform_device *pdev,
+				    struct imx_hdmi_i2c *pd)
+{
+	struct device_node *np = pdev->dev.of_node;
+	u32 freq;
+	int err;
+
+	err = of_property_read_u32(np, "clock-frequency", &freq);
+	if (err) {
+		freq = IMX_HDMI_I2C_STANDARD_FREQ;
+		dev_dbg(&pdev->dev, "using default frequency %u\n", freq);
+	}
+	else if (freq != IMX_HDMI_I2C_STANDARD_FREQ || freq != IMX_HDMI_I2C_FAST_FREQ)
+	{
+		freq = IMX_HDMI_I2C_STANDARD_FREQ;
+		dev_dbg(&pdev->dev, "using default frequency %u\n", freq);
+	}
+	pd->clk_hz = freq;
+
+	return 0;
+}
+
 static int imx_hdmi_i2c_probe(struct platform_device *pdev)
 {
 	struct imx_hdmi_i2c *pd;
@@ -369,6 +398,9 @@ static int imx_hdmi_i2c_probe(struct platform_device *pdev)
 		dev_err(pd->dev, "no irq resource\n");
 		return irq;
 	}
+
+	imx_hdmi_i2c_get_frequency(pdev, pd);
+
 
 	ret = devm_request_irq(pd->dev, irq, imx_hdmi_i2c_isr,
 			       IRQF_SHARED, "imx hdmi i2c", pd);
