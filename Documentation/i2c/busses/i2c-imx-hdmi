@@ -1,0 +1,62 @@
+Kernel driver i2c-imx-hdmi
+
+Supported adapters:
+  * Freescale iMX6Quad HDMI controller
+  * Freescale iMX6DualLite HDMI controller
+  * Freescale iMX6Solo HDMI controller
+
+Datasheets:
+	Publicly available at the Freescale website
+
+Authors:
+	Vladimir Zapolskiy <vladimir_zapolskiy@mentor.com>
+
+
+Description
+-----------
+
+According to the iMX6 Reference Manual only two types of transactions
+are supported by HDMI I2C Master Interface in Normal Mode:
+
+A) one byte data write transaction (I2C spec write/write transmission):
+
+   master   S|slave addr[6:0]|0|     |slave reg[7:0]|     |data[7:0]|     |P
+   slave                       | ack |              | ack |         | ack |
+
+B) one byte data read transaction (I2C spec write/read combined format):
+
+   master   S|slave addr[6:0]|0|     |slave reg[7:0]|     | ...
+   slave                       | ack |              | ack | ...
+
+   master   ... Sr|slave addr[6:0]|1|     |         | ack |P
+   slave    ...                     | Ack |data[7:0]|
+
+HDMI I2C Master Interface Extended Read Mode allows to execute one
+more transaction pattern so called segment pointer-based read:
+
+C) segment pointer-based read (I2C spec write/write/read combined format):
+
+   master   S|seg addr[6:0]|0|     |seg pointer[7:0]|     | ...
+   slave                     | xxx |                | xxx | ...
+
+   master   ... Sr|slave addr[6:0]|0|     |slave reg[7:0]|     | ...
+   slave    ...                     | ack |              | ack | ...
+
+   master   ... Sr|slave addr[6:0]|1|     |         | ack |P
+   slave    ...                     | ack |data[7:0]|
+
+At the moment Extended Read Mode is not supported by the driver.
+
+The technical limitations of the iMX6 HDMI E-DDC bus does not allow
+to call it an I2C compatible bus, however relativery large subset of
+I2C transactions can be decomposed into aforementioned data read/write
+operations and many I2C devices correctly support those operations,
+but the primary goad of the device is to read EDID blob of a connected
+HDMI monitor.
+
+
+Notes
+-----
+
+The bus driver may be used independently on HDMI controller, but due
+to device limitations it can not support arbitrary slave devices.
