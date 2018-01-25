@@ -10,6 +10,8 @@ Required properties:
  - #address-cells : should be <1>
  - #size-cells : should be <0>
  - compatible : should be "fsl,imx6q-hdmi" or "fsl,imx6dl-hdmi".
+   If internal HDMI DDC I2C master controller is supposed to be used,
+   then "simple-bus" should be added to compatible value.
  - gpr : should be <&gpr>.
    The phandle points to the iomuxc-gpr region containing the HDMI
    multiplexer control register.
@@ -22,6 +24,7 @@ Required properties:
 
 Optional properties:
  - ddc-i2c-bus: phandle of an I2C controller used for DDC EDID probing
+ - ddc: internal HDMI DDC I2C master controller
 
 example:
 
@@ -32,13 +35,18 @@ example:
         hdmi: hdmi@0120000 {
                 #address-cells = <1>;
                 #size-cells = <0>;
-                compatible = "fsl,imx6q-hdmi";
+                compatible = "fsl,imx6q-hdmi", "simple-bus";
                 reg = <0x00120000 0x9000>;
                 interrupts = <0 115 0x04>;
                 gpr = <&gpr>;
                 clocks = <&clks 123>, <&clks 124>;
                 clock-names = "iahb", "isfr";
                 ddc-i2c-bus = <&i2c2>;
+
+		hdmi_ddc: ddc {
+                        compatible = "fsl,imx6q-hdmi-ddc";
+                        status = "disabled";
+                };
 
                 port@0 {
                         reg = <0>;
