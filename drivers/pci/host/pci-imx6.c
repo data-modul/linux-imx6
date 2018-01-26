@@ -19,6 +19,7 @@
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
 #include <linux/module.h>
 #include <linux/of_gpio.h>
+#include <linux/of_device.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -33,6 +34,7 @@
 
 struct imx6_pcie {
 	int			reset_gpio;
+	int			clkreq_gpio;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_phy;
 	struct clk		*pcie;
@@ -78,7 +80,12 @@ struct imx6_pcie {
 
 #define PHY_RX_OVRD_IN_LO 0x1005
 #define PHY_RX_OVRD_IN_LO_RX_DATA_EN (1 << 5)
-#define PHY_RX_OVRD_IN_LO_RX_PLL_EN (1 << 3)
+#define PHY_RX_OVRD_IN_LO_RX_PLL_EN  (1 << 3)
+
+#define PCIE_PHY_ATEOVRD          (0x10)
+#define PCIE_PHY_MPLL_OVRD_IN_LO  (0x11)
+#define PCIE_PHY_MPLL_OVRD_IN_HI  (0x12)
+
 
 static int pcie_phy_poll_ack(void __iomem *dbi_base, int exp_val)
 {
@@ -425,6 +432,45 @@ static int imx6_pcie_establish_link(struct pcie_port *pp)
 	return 0;
 }
 
+static void imx_pcie_override_phy_mpll(struct pcie_port *pp, u32 mpll_multiplier, u32 ref_clkdiv2)
+{
+    u32 ref_usb2_en;
+    u32 reg1;
+
+    pr_info("Overriding PCIe PHY MPLL config: multiplier = %d, clkdiv2 = %d\n",
+        mpll_multiplier, ref_clkdiv2);
+
+
+    // set MPLL to disabled
+    ////pcie_phy_write(pp->dbi_base, PCIE_PHY_MPLL_OVRD_IN_LO, 0x0001);
+
+    // set MPLL multiplier
+    pcie_phy_write(pp->dbi_base, PCIE_PHY_MPLL_OVRD_IN_LO,
+            (0x0001<<9 | (mpll_multiplier<<2)) & 0x03fc);
+
+    /*
+     * set the ref_clkdiv2.  when this override is enabled it
+     * overrides both ref_clkdiv2 and ref_usb2_en.  make sure
+     * the overriden ref_usb2_en reflects the original value.
+     */
+    pcie_phy_read(pp->dbi_base, PCIE_PHY_ATEOVRD, &reg1);
+    ref_usb2_en = (reg1 >> 1) & 0x1;
+
+
+
+    /* set the current value of ref_usb2_en as the override */
+    /* set the ref_clkdiv2 override  */
+    /* enable the ref_clkdiv2 override */
+    pcie_phy_write(pp->dbi_base, PCIE_PHY_ATEOVRD,
+            (ref_usb2_en << 1) | ref_clkdiv2 | (0x1 << 2));
+
+    /* enable MPLL */
+    ///pcie_phy_write(pp->dbi_base, PCIE_PHY_MPLL_OVRD_IN_LO, 0x0003);
+
+}
+
+
+
 static void imx6_pcie_host_init(struct pcie_port *pp)
 {
 	imx6_pcie_assert_core_reset(pp);
@@ -432,6 +478,8 @@ static void imx6_pcie_host_init(struct pcie_port *pp)
 	imx6_pcie_init_phy(pp);
 
 	imx6_pcie_deassert_core_reset(pp);
+
+//	imx_pcie_override_phy_mpll(pp, 50, 1); /* tune this */
 
 	dw_pcie_setup_rc(pp);
 
@@ -564,6 +612,7 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *dbi_base;
 	int ret;
+	int clkreq;
 
 	imx6_pcie = devm_kzalloc(&pdev->dev, sizeof(*imx6_pcie), GFP_KERNEL);
 	if (!imx6_pcie)
@@ -592,7 +641,21 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 		}
 	}
 
+	imx6_pcie->clkreq_gpio = of_get_named_gpio(np, "clkreq-gpio", 0);
+	if (gpio_is_valid(imx6_pcie->clkreq_gpio)) {
+		ret = devm_gpio_request_one(&pdev->dev, imx6_pcie->clkreq_gpio,
+				GPIOF_IN, "PCIe clkreq");
+		if (ret) {
+			dev_err(&pdev->dev, "unable to get clkreq gpio\n");
+			return ret;
+		}
+	}
+
 	/* Fetch clocks */
+
+	/* read clkreq_gpio */
+	clkreq = gpio_get_value(imx6_pcie->clkreq_gpio);
+
 	imx6_pcie->pcie_phy = devm_clk_get(&pdev->dev, "pcie_phy");
 	if (IS_ERR(imx6_pcie->pcie_phy)) {
 		dev_err(&pdev->dev,
@@ -607,11 +670,20 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 		return PTR_ERR(imx6_pcie->pcie_bus);
 	}
 
-	imx6_pcie->pcie = devm_clk_get(&pdev->dev, "pcie");
-	if (IS_ERR(imx6_pcie->pcie)) {
-		dev_err(&pdev->dev,
-			"pcie clock source missing or invalid\n");
-		return PTR_ERR(imx6_pcie->pcie);
+	if (!clkreq) {
+		imx6_pcie->pcie = devm_clk_get(&pdev->dev, "pcie");
+		if (IS_ERR(imx6_pcie->pcie)) {
+			dev_err(&pdev->dev,
+				"pcie clock source missing or invalid\n");
+			return PTR_ERR(imx6_pcie->pcie);
+		}
+	} else {
+		imx6_pcie->pcie = devm_clk_get(&pdev->dev, "pcie2");
+		if (IS_ERR(imx6_pcie->pcie)) {
+			dev_err(&pdev->dev,
+				"pcie2 clock source missing or invalid\n");
+			return PTR_ERR(imx6_pcie->pcie);
+		}
 	}
 
 	/* Grab GPR config register range */
@@ -625,6 +697,9 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 	ret = imx6_add_pcie_port(pp, pdev);
 	if (ret < 0)
 		return ret;
+
+	if (!clkreq)
+		imx_pcie_override_phy_mpll(pp, 50, 1); /* tune this */
 
 	platform_set_drvdata(pdev, imx6_pcie);
 	return 0;
