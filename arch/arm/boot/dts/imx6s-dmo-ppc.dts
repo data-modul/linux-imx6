@@ -151,15 +151,33 @@
 	};
 };
 
-&ecspi4 {
+&ecspi1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ecspi4>;
+	pinctrl-0 = <&pinctrl_ecspi1>;
 
 	fsl,spi-num-chipselects = <2>;
-	cs-gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>,
-		   <&gpio5 9 GPIO_ACTIVE_HIGH>;
+	cs-gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>, /* GPIO4_09 */
+		   <&gpio5 9 GPIO_ACTIVE_HIGH>; /* GPIO5_09 */
 
 	status = "okay";
+
+	/* The spidev node is not available by default since it is no more
+	 * supported in device trees. To have a dummy spi device, the following
+	 * nodes should be uncommented and CONFIG_SPI_SPIDEV is set to "y" */
+
+	 /*
+	spidev@0 {
+		reg = <0>;
+		compatible = "spidev";
+		spi-max-frequency = <1000000>;
+	};
+
+	spidev@1 {
+		reg = <1>;
+		compatible = "spidev";
+		spi-max-frequency = <1000000>;
+	}; 
+	*/
 };
 
 &i2c1 {
@@ -391,13 +409,13 @@
 			>;
 		};
 
-		pinctrl_ecspi4: ecspi4grp {
+		pinctrl_ecspi1: ecspi1grp {
 			fsl,pins = <
-				MX6QDL_PAD_DISP0_DAT15__ECSPI1_SS1	0x0001B0B0
+				MX6QDL_PAD_DISP0_DAT15__GPIO5_IO09	0x0001B0B0
 				MX6QDL_PAD_KEY_COL0__ECSPI1_SCLK	0x0001B0B0
 				MX6QDL_PAD_KEY_COL1__ECSPI1_MISO	0x0001B0B0
 				MX6QDL_PAD_KEY_ROW0__ECSPI1_MOSI	0x0001B0B0
-				MX6QDL_PAD_KEY_ROW1__ECSPI1_SS0		0x0001B0B0
+				MX6QDL_PAD_KEY_ROW1__GPIO4_IO09		0x0001B0B0
 			>;
 		};
 
