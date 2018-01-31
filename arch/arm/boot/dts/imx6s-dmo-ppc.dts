@@ -164,21 +164,23 @@
 
 	/* The spidev node is not available by default since it is no more
 	 * supported in device trees. To have a dummy spi device, the following
-	 * nodes should be uncommented and CONFIG_SPI_SPIDEV is set to "y" */
+	 * nodes should be enabled( status = "okay" ) and in kernel config
+	 * CONFIG_SPI_SPIDEV=y
+	 */
 
-	 /*
 	spidev@0 {
 		reg = <0>;
 		compatible = "spidev";
 		spi-max-frequency = <1000000>;
+		status = "disabled";
 	};
 
 	spidev@1 {
 		reg = <1>;
 		compatible = "spidev";
 		spi-max-frequency = <1000000>;
-	}; 
-	*/
+		status = "disabled";
+	};
 };
 
 &i2c1 {
