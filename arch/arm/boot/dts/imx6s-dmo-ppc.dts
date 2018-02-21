@@ -685,15 +685,3 @@
 	dr_mode = "host";
 	status = "okay";
 };
-
-&ldb {
-	status = "okay";
-
-	lvds-channel@1 {
-		status = "okay";
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <24>;
-
-		displaytimings: display-timings {};
-	};
-};
