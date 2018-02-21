@@ -340,10 +340,10 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-udoo.dtb \
 	imx6q-wandboard.dtb \
 	imx6q-wandboard-revb1.dtb \
-	imx6s-dmo-ppc.dtb \
 	imx6s-dmo-ppc-chimei-g070y2.dtb \
 	imx6s-dmo-ppc-chimei-g101ICE.dtb \
-	imx6s-dmo-ppc-auo-g804sn05.dtb
+	imx6s-dmo-ppc-auo-g804sn05.dtb \
+	imx6s-dmo-ppc-auo-g173hw01.dtb
 dtb-$(CONFIG_SOC_IMX6SL) += \
 	imx6sl-evk.dtb \
 	imx6sl-warp.dtb
