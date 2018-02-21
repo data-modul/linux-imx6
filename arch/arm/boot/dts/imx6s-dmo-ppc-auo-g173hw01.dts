@@ -13,13 +13,22 @@
 
 &ldb {
 	status = "okay";
-	lvds-channel@1 {
+	fsl,dual-channel;
+
+	lvds-channel@0 {
 		status = "okay";
 		fsl,data-mapping = "spwg";
 		fsl,data-width = <24>;
 
-		displaytimings: display-timings {};
+	displaytimings: display-timings {};
 	};
 };
 
-#include "displaytiming-chimei-g070y2.dts"
+#include "displaytiming-auo-g173hw01.dts"
+
+&backlight1 {
+	pwms = <&pwm1 0 200000>;
+	brightness-levels = <0 5 10 15 20 30 40 50 65 90 100>;
+	default-brightness-level = <7>;
+	status = "okay";
+};
