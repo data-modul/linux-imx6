@@ -592,16 +592,23 @@
 	assigned-clock-rates = <100000000>, <100000000>;
 };
 
+/* The hdmi node is disabled by default since there is only one display
+ * output, which is by default is set to lvds.
+ * In kernel config the CONFIG_I2C_IMX_HDMI=y should be set.
+ * In case of interest to have HDMI audio, CONFIG_DRM_DW_HDMI_AHB_AUDIO should
+ * also be set to yes.
+ */
+
 &hdmi {
 	ddc-i2c-bus = <&hdmi_ddc>;
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi_ddc {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_ddc>;
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie {
