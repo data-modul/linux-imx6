@@ -10,23 +10,80 @@
  * http://www.opensource.org/licenses/gpl-license.html
  * http://www.gnu.org/copyleft/gpl.html
  */
-/dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/net/ti-dp83867.h>
-#include "imx6dl.dtsi"
-#include "imx6qdl-ppc.dtsi"
 
 / {
-	model = "Data Modul AG iMX6-PPC Board";
-	compatible = "dmo,imx6-ppc", "fsl,imx6dl";
-
 	chosen {
 		linux,stdout-path = &uart1;
 	};
 
-	memory {
-		reg = <0x10000000 0x40000000>;
+	clocks {
+		rmii_clk: clock@0 {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <50000000>; /* 50MHz */
+		};
+		
+		anaclk1 {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>; /* 100MHz */
+		};
+	};
+
+	soc {
+		pcie2: pcie2@0x01000000 {
+			compatible = "fsl,imx6q-pcie", "snps,dw-pcie";
+			reg = <0x01ffc000 0x04000>,
+			      <0x01f00000 0x80000>;
+			reg-names = "dbi", "config";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			device_type = "pci";
+			ranges = <0x00000800 0 0x01f00000 0x01f00000 0 0x00080000 /* configuration space */
+				  0x81000000 0 0          0x01f80000 0 0x00010000 /* downstream I/O  */
+				  0x82000000 0 0x01000000 0x01000000 0 0x00f00000>; /* non-prefetchable  memory */
+			num-lanes = <1>;
+			interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "msi";
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 0x7>;
+			interrupt-map = <0 0 0 1 &gpc GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+			                <0 0 0 2 &gpc GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>,
+			                <0 0 0 3 &gpc GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
+			                <0 0 0 4 &gpc GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clks IMX6QDL_CLK_PCIE_AXI>,
+				 <&clks IMX6QDL_CLK_LVDS1_GATE>,
+				 <&clks IMX6QDL_CLK_PCIE_REF_125M>;
+			clock-names = "pcie", "pcie_bus", "pcie_phy";
+			status = "disabled";
+		};
+
+		aips-bus@02100000 { /* AIPS2 */
+			fec: ethernet@02188000 {
+				compatible = "fsl,imx6q-fec";
+				reg = <0x02188000 0x4000>;
+				interrupts-extended =
+					<&intc 0 118 IRQ_TYPE_LEVEL_HIGH>,
+					<&intc 0 119 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clks IMX6QDL_CLK_ENET>,
+					 <&clks IMX6QDL_CLK_ENET>,
+					 <&clks IMX6QDL_CLK_ENET_REF>,
+					 <&rmii_clk>;
+				clock-names = "ipg", "ahb", "ptp";
+				status = "disabled";
+			};
+
+			ocotp: ocotp@021bc000 {
+				compatible = "fsl,imx6q-ocotp", "syscon";
+				reg = <0x021bc000 0x4000>;
+				clocks = <&clks IMX6QDL_CLK_IIM>;
+			};
+		};
 	};
 
 	backlight1: backlight {
@@ -104,7 +161,7 @@
 
 	sound {
 		compatible = "fsl,imx-audio-sgtl5000";
-		model = "imx6s-dmo-ppc-sgtl5000";
+		model = "imx6qdl-dmo-ppc-sgtl5000";
 		ssi-controller = <&ssi1>;
 		audio-codec = <&codec>;
 		audio-routing =
@@ -332,7 +389,7 @@
 };
 
 &iomuxc {
-	imx6s-dmo-ppc {
+	imx6qdl-dmo-ppc {
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				/* hwid 0 */
@@ -623,10 +680,9 @@
 	      <&clks IMX6QDL_PLL6_BYPASS_SRC>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_ext", "pcie_ext_src";
 	ext_osc = <1>;
-    fsl,max-link-speed = <1>;    
+	fsl,max-link-speed = <1>;
 	status = "okay";
 };
-
 
 &pcie2 {
 	pinctrl-names = "default";

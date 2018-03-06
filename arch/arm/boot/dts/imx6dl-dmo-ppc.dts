@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Data Modul AG, Reyhaneh Yazdani <reyhane.y84@gmail.com>
+ * Copyright 2018 Data Modul AG, Reyhaneh Yazdani <reyhane.y84@gmail.com>
  *
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
@@ -8,18 +8,16 @@
  * http://www.opensource.org/licenses/gpl-license.html
  * http://www.gnu.org/copyleft/gpl.html
  */
+/dts-v1/;
 
-#include "imx6s-dmo-ppc.dts"
+#include "imx6dl.dtsi"
+#include "imx6qdl-dmo-ppc.dtsi"
 
-&ldb {
-	status = "okay";
-	lvds-channel@1 {
-		status = "okay";
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <24>;
+/ {
+	model = "Data Modul AG PPC Board-Dl/S-1G";
+	compatible = "dmo,imx6dl-ppc", "fsl,imx6dl";
 
-		displaytimings: display-timings {};
+	memory {
+		reg = <0x10000000 0x40000000>;
 	};
 };
-
-#include "displaytiming-chimei-g101ICE.dts"
