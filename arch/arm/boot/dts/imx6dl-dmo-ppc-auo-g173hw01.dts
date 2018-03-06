@@ -9,7 +9,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#include "imx6s-dmo-ppc.dts"
+#include "imx6dl-dmo-ppc.dts"
 
 &ldb {
 	status = "okay";
