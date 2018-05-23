@@ -764,6 +764,8 @@ int ipu_ic_init(struct ipu_soc *ipu, struct device *dev,
 		priv->task[i].bit = &ic_task_bit[i];
 	}
 
+	ipu_image_convert_init(ipu, dev);
+
 	return 0;
 }
 

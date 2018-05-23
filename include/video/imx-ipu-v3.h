@@ -408,4 +408,10 @@ struct ipu_client_platformdata {
 	struct device_node *of_node;
 };
 
+enum ipu_image_scale_ctrl {
+	IPU_IMAGE_SCALE_ROUND_DOWN,
+	IPU_IMAGE_SCALE_PIXELPERFECT,
+	IPU_IMAGE_SCALE_ROUND_UP,
+};
+
 #endif /* __DRM_IPU_H__ */
