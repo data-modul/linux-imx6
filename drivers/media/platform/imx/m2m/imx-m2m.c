@@ -66,7 +66,6 @@ struct m2mx_dev {
 	struct mutex		dev_mutex;
 
 	struct v4l2_m2m_dev	*m2m_dev;
-	struct vb2_alloc_ctx    *alloc_ctx;
 };
 
 struct m2mx_ctx {
@@ -183,8 +182,14 @@ static void m2mx_device_run(void *priv)
 	struct m2mx_ctx *ctx = priv;
 	struct m2mx_dev *dev = ctx->dev;
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+	struct ipu_image_convert_run *run;
 	dma_addr_t s_phys, d_phys;
 
+	run = kzalloc(sizeof(*run), GFP_KERNEL);
+	if (!run)
+		return;
+
+	run->ctx = ctx->ic_ctx;
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 
@@ -196,10 +201,13 @@ static void m2mx_device_run(void *priv)
 		return;
 	}
 
+	run->in_phys = s_phys;
+	run->out_phys = d_phys;
+
 	if (instrument)
 		getnstimeofday(&ctx->start);
 
-	ipu_image_convert_run(ctx->ic_ctx, s_phys, d_phys);
+	ipu_image_convert_queue(run);
 }
 
 static void m2mx_convert_complete(struct ipu_image_convert_run *run,
@@ -601,8 +609,6 @@ static int m2mx_queue_setup(struct vb2_queue *vq,
 	*nbuffers = count;
 	sizes[0] = image->pix.sizeimage;
 
-	alloc_ctxs[0] = ctx->dev->alloc_ctx;
-
 	return 0;
 }
 
@@ -709,6 +715,7 @@ static int queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->ops = &m2mx_qops;
 	src_vq->mem_ops = &vb2_dma_contig_memops;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	src_vq->dev = ctx->dev->ipu_dev;
 
 	ret = vb2_queue_init(src_vq);
 	if (ret)
@@ -722,6 +729,7 @@ static int queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops = &m2mx_qops;
 	dst_vq->mem_ops = &vb2_dma_contig_memops;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	dst_vq->dev = ctx->dev->ipu_dev;
 
 	return vb2_queue_init(dst_vq);
 }
@@ -988,17 +996,8 @@ static int m2mx_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dev);
 
-	dev->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
-	if (IS_ERR(dev->alloc_ctx)) {
-		v4l2_err(&dev->v4l2_dev, "Failed to alloc vb2 context\n");
-		ret = PTR_ERR(dev->alloc_ctx);
-		goto unreg_vdev;
-	}
-
 	return 0;
 
-unreg_vdev:
-	video_unregister_device(dev->vfd);
 rel_m2m:
 	v4l2_m2m_release(dev->m2m_dev);
 unreg_dev:
@@ -1014,7 +1013,6 @@ static int m2mx_remove(struct platform_device *pdev)
 	v4l2_info(&dev->v4l2_dev, "Removing " MEM2MEM_NAME "\n");
 	m2mx_put_ipu(dev);
 	v4l2_m2m_release(dev->m2m_dev);
-	vb2_dma_contig_cleanup_ctx(dev->alloc_ctx);
 	video_unregister_device(dev->vfd);
 
 	v4l2_device_unregister(&dev->v4l2_dev);
