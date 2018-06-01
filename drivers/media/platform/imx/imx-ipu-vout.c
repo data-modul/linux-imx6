@@ -108,7 +108,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 {
 	strcpy(cap->driver, "i.MX v4l2 output");
 	cap->version = 0;
-	cap->capabilities = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
+	cap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
+	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
 	cap->card[0] = '\0';
 	cap->bus_info[0] = '\0';
 
