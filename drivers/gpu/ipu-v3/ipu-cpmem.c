@@ -23,6 +23,7 @@ __iomem *ipu_get_cpmem(struct ipuv3_channel *ch)
 	return cpmem->base + ch->num;
 }
 
+
 static void ipu_ch_param_write_field(struct ipuv3_channel *ch, u32 wbs, u32 v)
 {
 	struct ipu_ch_param __iomem *base = ipu_get_cpmem(ch);
