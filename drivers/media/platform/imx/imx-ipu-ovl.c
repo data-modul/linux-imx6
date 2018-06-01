@@ -31,6 +31,7 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 #include <video/imx-ipu-v3.h>
+#include <video/imx-ipu-image-convert.h>
 #include "../../../gpu/ipu-v3/ipu-prv.h"
 
 #include <media/v4l2-dev.h>
@@ -79,7 +80,6 @@ struct vout_data {
 
 	struct vb2_queue	vidq;
 
-	struct vb2_alloc_ctx	*alloc_ctx;
 	spinlock_t		lock;
 	struct device		*dev;
 
@@ -324,9 +324,9 @@ static int ipu_ovl_vidioc_s_crop(struct file *file, void *fh,
 	return 0;
 }
 
-static int vout_videobuf_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,
+static int vout_videobuf_setup(struct vb2_queue *vq,
 		unsigned int *count, unsigned int *num_planes,
-		unsigned int sizes[], void *alloc_ctxs[])
+		unsigned int sizes[], struct device *alloc_ctxs[])
 {
 	struct vout_data *vout = vb2q_to_vout(vq);
 	struct ipu_ch_param *cpmem = ipu_get_cpmem(vout->ipu_ch);
@@ -336,7 +336,6 @@ static int vout_videobuf_setup(struct vb2_queue *vq, const struct v4l2_format *f
 
 	*num_planes = 1;
 	sizes[0] = image->pix.sizeimage;
-	alloc_ctxs[0] = vout->alloc_ctx;
 
 	if (!*count)
 		*count = 32;
@@ -431,11 +430,7 @@ static int vout_enable(struct vout_queue *q)
 
 	ipu_cpmem_set_high_priority(vout->ipu_ch);
 
-	ret = ipu_dmfc_init_channel(vout->dmfc, image->pix.width);
-	if (ret) {
-		dev_err(vout->dev, "initializing dmfc channel failed with %d\n", ret);
-		return ret;
-	}
+	ipu_dmfc_config_wait4eot(vout->dmfc, image->pix.width);
 
 	ipu_dmfc_enable_channel(vout->dmfc);
 	ipu_idmac_enable_channel(vout->ipu_ch);
@@ -448,7 +443,7 @@ static int vout_enable(struct vout_queue *q)
 	return 0;
 }
 
-static void vout_scaler_complete(void *context, int err)
+static void vout_scaler_complete(struct ipu_image_convert_run *run, void *context)
 {
 	struct vout_queue *q = context;
 	struct vout_data *vout = q->vout;
@@ -456,12 +451,12 @@ static void vout_scaler_complete(void *context, int err)
 
 	spin_lock_irqsave(&vout->lock, flags);
 
-	if (err) {
-		vb2_buffer_done(q->vb, VB2_BUF_STATE_ERROR);
-		list_move_tail(&q->list, &vout->idle_list);
-		spin_unlock_irqrestore(&vout->lock, flags);
-		return;
-	}
+//	if (err) {
+//		vb2_buffer_done(q->vb, VB2_BUF_STATE_ERROR);
+//		list_move_tail(&q->list, &vout->idle_list);
+//		spin_unlock_irqrestore(&vout->lock, flags);
+//		return;
+//	}
 
 	if (vout->status == VOUT_STARTING || vout->status == VOUT_RUNNING)
 		list_move_tail(&q->list, &vout->show_list);
@@ -526,8 +521,15 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 		vout->in_image.phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 
 		/*FIXME: this shoud be investigated or removed */
-		ipu_image_convert(vout->ipu, &vout->in_image, image,
-			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
+//		ipu_image_convert(vout->ipu, &vout->in_image, image,
+//			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
+		ipu_image_convert(vout->ipu,
+				IC_TASK_POST_PROCESSOR,
+				&vout->in_image,
+				image,
+				IPU_ROTATE_90_RIGHT,
+				vout_scaler_complete,
+				q);
 	} else {
 		image->pix = vout->in_image.pix;
 		image->rect = vout->in_image.rect;
@@ -733,12 +735,6 @@ static int mxc_v4l2out_open(struct file *file)
 		goto failed_dp;
 	}
 
-	ret = ipu_dmfc_alloc_bandwidth(vout->dmfc, 1280 * 720 * 70, 64);
-	if (ret) {
-		dev_err(vout->dev, "allocating dmfc bandwidth failed with %d\n", ret);
-		goto failed_bw;
-	}
-
 	vout->opened++;
 
 	INIT_LIST_HEAD(&vout->idle_list);
@@ -752,8 +748,8 @@ static int mxc_v4l2out_open(struct file *file)
 
 		q = kzalloc(sizeof (*q), GFP_KERNEL);
 		if (!q) {
-			ipu_dmfc_free_bandwidth(vout->dmfc);
-			return -ENOMEM;
+			goto failed_bw;
+			ret = -ENOMEM;
 		}
 		q->size = vout->width_base * vout->height_base * 2;
 		q->virt = dma_alloc_coherent(NULL, q->size, &q->phys,
@@ -771,6 +767,7 @@ static int mxc_v4l2out_open(struct file *file)
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->buf_struct_size = sizeof(struct vb2_buffer);
+	q->dev = vout->dev;
 
 	return vb2_queue_init(q);
 
@@ -796,7 +793,6 @@ static int mxc_v4l2out_close(struct file *file)
 		kfree(q);
 	}
 
-	ipu_dmfc_free_bandwidth(vout->dmfc);
 	ipu_dp_put(vout->dp);
 	ipu_dmfc_put(vout->dmfc);
 	ipu_idmac_put(vout->ipu_ch);
@@ -875,12 +871,6 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 		goto failed_vdev_alloc;
 	}
 
-	vout->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
-	if (IS_ERR(vout->alloc_ctx)) {
-		ret = PTR_ERR(vout->alloc_ctx);
-		goto failed_vb2_alloc;
-	}
-
 	vout->dma = pdata->dma[0];
 
 	vout->video_dev->minor = -1;
@@ -907,8 +897,6 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 	return 0;
 
 failed_register:
-	vb2_dma_contig_cleanup_ctx(vout->alloc_ctx);
-failed_vb2_alloc:
 	kfree(vout->video_dev);
 failed_vdev_alloc:
 	v4l2_device_unregister(&vout->v4l2_dev);
@@ -925,7 +913,6 @@ static int mxc_v4l2out_remove(struct platform_device *pdev)
 
 	video_unregister_device(vout->video_dev);
 	v4l2_device_unregister(&vout->v4l2_dev);
-	vb2_dma_contig_cleanup_ctx(vout->alloc_ctx);
 
 	kfree(vout);
 
