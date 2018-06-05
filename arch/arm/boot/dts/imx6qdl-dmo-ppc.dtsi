@@ -28,35 +28,6 @@
 		};
 	};
 
-	soc {
-		pcie2: pcie2@0x01000000 {
-			compatible = "fsl,imx6q-pcie", "snps,dw-pcie";
-			reg = <0x01ffc000 0x04000>,
-			      <0x01f00000 0x80000>;
-			reg-names = "dbi", "config";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			device_type = "pci";
-			ranges = <0x00000800 0 0x01f00000 0x01f00000 0 0x00080000 /* configuration space */
-				  0x81000000 0 0          0x01f80000 0 0x00010000 /* downstream I/O  */
-				  0x82000000 0 0x01000000 0x01000000 0 0x00f00000>; /* non-prefetchable  memory */
-			num-lanes = <1>;
-			interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &gpc GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 2 &gpc GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 3 &gpc GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 4 &gpc GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks IMX6QDL_CLK_PCIE_AXI>,
-				 <&clks IMX6QDL_CLK_LVDS1_GATE>,
-				 <&clks IMX6QDL_CLK_PCIE_REF_125M>;
-			clock-names = "pcie", "pcie_bus", "pcie_phy";
-			status = "disabled";
-		};
-	};
-
 	backlight1: backlight {
 		compatible = "pwm-backlight";
 
@@ -651,14 +622,6 @@
 	      <&clks IMX6QDL_PLL6_BYPASS_SRC>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_ext", "pcie_ext_src";
 	ext_osc = <1>;
-	status = "okay";
-};
-
-&pcie2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie>;
-	reset-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
-	clkreq-gpio = <&gpio2 23 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 

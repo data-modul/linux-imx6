@@ -35,7 +35,6 @@
 struct imx6_pcie {
 	u32			ext_osc;
 	int			reset_gpio;
-	int			clkreq_gpio;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_phy;
 	struct clk		*pcie;
@@ -621,7 +620,6 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *dbi_base;
 	int ret;
-	int clkreq;
 
 	imx6_pcie = devm_kzalloc(&pdev->dev, sizeof(*imx6_pcie), GFP_KERNEL);
 	if (!imx6_pcie)
@@ -650,21 +648,7 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 		}
 	}
 
-	imx6_pcie->clkreq_gpio = of_get_named_gpio(np, "clkreq-gpio", 0);
-	if (gpio_is_valid(imx6_pcie->clkreq_gpio)) {
-		ret = devm_gpio_request_one(&pdev->dev, imx6_pcie->clkreq_gpio,
-				GPIOF_IN, "PCIe clkreq");
-		if (ret) {
-			dev_err(&pdev->dev, "unable to get clkreq gpio\n");
-			return ret;
-		}
-	}
-
 	/* Fetch clocks */
-
-	/* read clkreq_gpio */
-	clkreq = gpio_get_value(imx6_pcie->clkreq_gpio);
-
 	imx6_pcie->pcie_phy = devm_clk_get(&pdev->dev, "pcie_phy");
 	if (IS_ERR(imx6_pcie->pcie_phy)) {
 		dev_err(&pdev->dev,
@@ -699,21 +683,12 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (!clkreq) {
 		imx6_pcie->pcie = devm_clk_get(&pdev->dev, "pcie");
 		if (IS_ERR(imx6_pcie->pcie)) {
 			dev_err(&pdev->dev,
 				"pcie clock source missing or invalid\n");
 			return PTR_ERR(imx6_pcie->pcie);
 		}
-	} else {
-		imx6_pcie->pcie = devm_clk_get(&pdev->dev, "pcie2");
-		if (IS_ERR(imx6_pcie->pcie)) {
-			dev_err(&pdev->dev,
-				"pcie2 clock source missing or invalid\n");
-			return PTR_ERR(imx6_pcie->pcie);
-		}
-	}
 
 	/* Grab GPR config register range */
 	imx6_pcie->iomuxc_gpr =
