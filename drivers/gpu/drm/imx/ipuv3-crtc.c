@@ -25,7 +25,7 @@
 #include <linux/errno.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fb_cma_helper.h>
-
+#include <drm/drm_crtc.h>
 #include <video/imx-ipu-v3.h>
 #include "imx-drm.h"
 #include "ipuv3-plane.h"
@@ -305,7 +305,7 @@ static int ipu_vout_init(struct ipu_crtc *ipu_crtc)
 	pdata.ipu_ch = ipu_crtc->plane[0]->ipu_ch;
 
 	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-vout",
-		imx_drm_crtc_id(ipu_crtc->imx_crtc), &pdata, sizeof(pdata));
+		drm_crtc_index(&ipu_crtc->base), &pdata, sizeof(pdata));
 
 	return 0;
 }
@@ -322,7 +322,7 @@ static int ipu_ovl_init(struct ipu_crtc *ipu_crtc)
 	pdata.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC;
 
 	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-ovl",
-		imx_drm_crtc_id(ipu_crtc->imx_crtc), &pdata, sizeof(pdata));
+		drm_crtc_index(&ipu_crtc->base), &pdata, sizeof(pdata));
 
 	return 0;
 }
