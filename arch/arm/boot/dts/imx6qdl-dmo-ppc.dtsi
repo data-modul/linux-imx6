@@ -19,15 +19,6 @@
 		linux,stdout-path = &uart1;
 	};
 
-	clocks {
-		anaclk1 {
-			compatible = "fixed-clock";
-			reg = <0>;
-			#clock-cells = <0>;
-			clock-frequency = <100000000>; /* 100MHz */
-		};
-	};
-
 	backlight1: backlight {
 		compatible = "pwm-backlight";
 
@@ -583,14 +574,6 @@
 	};
 };
 
-&clks {
-	assigned-clocks = <&clks IMX6QDL_PLL6_BYPASS_SRC>,
-			  <&clks IMX6QDL_PLL6_BYPASS>;
-	assigned-clock-parents = <&clks IMX6QDL_CLK_LVDS1_IN>,
-				 <&clks IMX6QDL_PLL6_BYPASS_SRC>;
-	assigned-clock-rates = <100000000>, <100000000>;
-};
-
 /* The hdmi node is disabled by default since there is only one display
  * output, which is by default is set to lvds.
  * In kernel config the CONFIG_I2C_IMX_HDMI=y should be set.
@@ -610,18 +593,13 @@
 	status = "okay";
 };
 
+/* To use i.MX6 PCIe with external clock, need to include imx6qdl-dmo-ppc-ext-osc.dtsi
+ * Currently internal clock in hardware is applied
+ */
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie>;
 	reset-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
-	clkreq-gpio = <&gpio2 23 GPIO_ACTIVE_LOW>;
-	clocks = <&clks IMX6QDL_CLK_PCIE_AXI>,
-	          <&clks IMX6QDL_CLK_LVDS1_IN>,
-	          <&clks IMX6QDL_CLK_PCIE_REF_125M>,
-	          <&clks IMX6QDL_PLL6_BYPASS>,
-	      <&clks IMX6QDL_PLL6_BYPASS_SRC>;
-	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_ext", "pcie_ext_src";
-	ext_osc = <1>;
 	status = "okay";
 };
 
