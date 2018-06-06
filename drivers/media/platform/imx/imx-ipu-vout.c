@@ -400,7 +400,7 @@ static int vout_enable(struct vout_queue *q)
 	return 0;
 }
 
-static void vout_scaler_complete(void *context, int err)
+static void vout_scaler_complete(struct ipu_image_convert_run *run, void *context)
 {
 	struct vout_queue *q = context;
 	struct vout_data *vout = q->vout;
@@ -408,12 +408,12 @@ static void vout_scaler_complete(void *context, int err)
 
 	spin_lock_irqsave(&vout->lock, flags);
 
-	if (err) {
+/*	if (err) {
 		vb2_buffer_done(q->vb, VB2_BUF_STATE_ERROR);
 		list_move_tail(&q->list, &vout->idle_list);
 		spin_unlock_irqrestore(&vout->lock, flags);
 		return;
-	}
+	}*/
 
 	if (vout->status == VOUT_STARTING || vout->status == VOUT_RUNNING)
 		list_move_tail(&q->list, &vout->show_list);
@@ -477,8 +477,16 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 		vout->in_image.phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 
 		/*FIXME: this shoud be investigated or removed */
-		ipu_image_convert(vout->ipu, &vout->in_image, image,
-			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
+//		ipu_image_convert(vout->ipu, &vout->in_image, image,
+//			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
+		ipu_image_convert(vout->ipu,
+				IC_TASK_POST_PROCESSOR,
+				&vout->in_image,
+				image,
+				IPU_ROTATE_90_RIGHT,
+				vout_scaler_complete,
+				q);
+
 	} else {
 		image->pix = vout->in_image.pix;
 		image->rect = vout->in_image.rect;
