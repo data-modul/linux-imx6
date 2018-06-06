@@ -740,7 +740,7 @@ static int mxc_v4l2out_close(struct file *file)
 
 static const struct v4l2_ioctl_ops mxc_ioctl_ops = {
 	.vidioc_querycap		= vidioc_querycap,
-	vidioc_cropcap			= vidioc_cropcap,
+	.vidioc_cropcap			= vidioc_cropcap,
 
 	.vidioc_enum_fmt_vid_out	= ipu_ovl_vidioc_enum_fmt_vid_out,
 	.vidioc_g_fmt_vid_out		= ipu_ovl_vidioc_g_fmt_vid_out,
