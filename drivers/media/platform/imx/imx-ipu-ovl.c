@@ -255,7 +255,7 @@ static int ipu_ovl_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	vout->crop.width = pix->width;
 	vout->crop.height = pix->height;
 
-	return ipu_ovl_sanitize(vout);`
+	return ipu_ovl_sanitize(vout);
 }
 
 static int ipu_ovl_vidioc_g_fmt_vid_out_overlay(struct file *file, void *fh,
