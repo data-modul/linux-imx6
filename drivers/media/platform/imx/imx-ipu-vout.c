@@ -31,6 +31,7 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 #include <video/imx-ipu-v3.h>
+#include <video/imx-ipu-image-convert.h>
 #include "../../../gpu/ipu-v3/ipu-prv.h"
 #include <drm/imx-ipu-v3-vout.h>
 
@@ -79,7 +80,6 @@ struct vout_data {
 
 	struct vb2_queue	vidq;
 
-	struct vb2_alloc_ctx	*alloc_ctx;
 	spinlock_t		lock;
 	struct device		*dev;
 
@@ -262,16 +262,15 @@ static int ipu_ovl_vidioc_s_crop(struct file *file, void *fh,
 	return ipu_ovl_sanitize(vout);;
 }
 
-static int vout_videobuf_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,
+static int vout_videobuf_setup(struct vb2_queue *vq,
 		unsigned int *count, unsigned int *num_planes,
-		unsigned int sizes[], void *alloc_ctxs[])
+		unsigned int sizes[], struct device *alloc_ctxs[])
 {
 	struct vout_data *vout = vb2q_to_vout(vq);
 	struct ipu_image *image = &vout->in_image;
 
 	*num_planes = 1;
 	sizes[0] = image->pix.sizeimage;
-	alloc_ctxs[0] = vout->alloc_ctx;
 
 	if (!*count)
 		*count = 32;
@@ -798,12 +797,6 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 		goto failed_vdev_alloc;
 	}
 
-	vout->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
-	if (IS_ERR(vout->alloc_ctx)) {
-		ret = PTR_ERR(vout->alloc_ctx);
-		goto failed_vb2_alloc;
-	}
-
 	vout->ipu_ch = pdata->ipu_ch;
 
 	vout->irq = ipu_idmac_channel_irq(ipu, vout->ipu_ch, IPU_IRQ_NFACK);
@@ -836,8 +829,6 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 	return 0;
 
 failed_register:
-	vb2_dma_contig_cleanup_ctx(vout->alloc_ctx);
-failed_vb2_alloc:
 	kfree(vout->video_dev);
 failed_vdev_alloc:
 	v4l2_device_unregister(&vout->v4l2_dev);
@@ -854,7 +845,6 @@ static int mxc_v4l2out_remove(struct platform_device *pdev)
 
 	video_unregister_device(vout->video_dev);
 	v4l2_device_unregister(&vout->v4l2_dev);
-	vb2_dma_contig_cleanup_ctx(vout->alloc_ctx);
 
 	kfree(vout);
 
