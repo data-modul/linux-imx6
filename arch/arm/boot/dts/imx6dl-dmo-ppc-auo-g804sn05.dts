@@ -12,13 +12,8 @@
 #include "imx6dl-dmo-ppc.dts"
 
 &ldb {
-	status = "okay";
-
 	lvds-channel@1 {
 		status = "okay";
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <24>;
-
 		displaytimings: display-timings {};
 	};
 };
