@@ -690,3 +690,19 @@
 	dr_mode = "host";
 	status = "okay";
 };
+
+&ldb {
+	status = "okay";
+
+	lvds-channel@0 {
+		status = "disabled";
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <24>;
+	};
+
+	lvds-channel@1 {
+		status = "disabled";
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <24>;
+	};
+};
