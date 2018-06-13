@@ -14,12 +14,8 @@
 #include "imx6qdl-dmo-ppc.dtsi"
 
 / {
-	model = "Data Modul AG PPC Board-Q/D-2G";
+	model = "Data Modul AG PPC Board-Q/D";
 	compatible = "dmo,imx6q-ppc", "fsl,imx6q";
-
-	memory {
-		reg = <0x10000000 0x80000000>;
-	};
 };
 
 &sata {
