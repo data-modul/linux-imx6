@@ -14,12 +14,8 @@
 #include "imx6qdl-dmo-ppc.dtsi"
 
 / {
-	model = "Data Modul AG PPC Board-Dl/S-1G";
+	model = "Data Modul AG PPC Board-Dl/S";
 	compatible = "dmo,imx6dl-ppc", "fsl,imx6dl";
-
-	memory {
-		reg = <0x10000000 0x40000000>;
-	};
 };
 
 &uart2 {
