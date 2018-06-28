@@ -82,6 +82,7 @@ struct vout_data {
 
 	struct vb2_queue	vidq;
 
+	struct device	*alloc_ctx;
 	spinlock_t		lock;
 	struct device		*dev;
 
@@ -356,6 +357,7 @@ static int vout_videobuf_setup(struct vb2_queue *vq,
 
 	*num_planes = 1;
 	sizes[0] = image->pix.sizeimage;
+	alloc_ctxs[0] = vout->alloc_ctx;
 
 	if (!*count)
 		*count = 32;
@@ -914,6 +916,7 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 		goto failed_vdev_alloc;
 	}
 
+	vout->alloc_ctx = &pdev->dev;
 	vout->dma = pdata->dma[0];
 	/* get main flow channel number */
 	vout->ipu_ch_bg = pdata->ipu_ch;
