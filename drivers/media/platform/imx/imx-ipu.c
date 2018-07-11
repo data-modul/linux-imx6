@@ -139,29 +139,7 @@ int ipu_try_fmt(struct file *file, void *fh,
 		 fmt->fourcc == V4L2_PIX_FMT_NV16)
 		f->fmt.pix.sizeimage *= 2;
 
-	switch (f->fmt.pix.pixelformat) {
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-	case V4L2_PIX_FMT_YUV422P:
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV16:
-	case V4L2_PIX_FMT_UYVY:
-	case V4L2_PIX_FMT_YUYV:
-		if (f->fmt.pix.width <= 720 && f->fmt.pix.height <= 576)
-			f->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
-		else
-			f->fmt.pix.colorspace = V4L2_COLORSPACE_REC709;
-		break;
-	case V4L2_PIX_FMT_RGB32:
-	case V4L2_PIX_FMT_RGB24:
-	case V4L2_PIX_FMT_BGR24:
-	case V4L2_PIX_FMT_RGB565:
-	case V4L2_PIX_FMT_BGR32:
-		f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
-		break;
-	default:
-		return -EINVAL;
-	}
+	f->fmt.pix.priv = 0;
 
 	return 0;
 }
