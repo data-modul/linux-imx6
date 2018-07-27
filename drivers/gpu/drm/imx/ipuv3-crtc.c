@@ -317,10 +317,12 @@ static int ipu_ovl_init(struct ipu_crtc *ipu_crtc)
 	struct platform_device *pdev;
 
 	pdata.ipu = ipu;
-	pdata.dp = ipu_crtc->plane[0]->dp;
-	pdata.ipu_ch = ipu_crtc->plane[0]->ipu_ch;
+	pdata.dp = ipu_crtc->plane[1]->dp;
+	pdata.ipu_ch = ipu_crtc->plane[1]->ipu_ch;
+	pdata.ipu_ch_bg = ipu_crtc->plane[0]->ipu_ch;
+	pdata.dmfc = ipu_crtc->plane[1]->dmfc;
 	pdata.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC;
-
+	
 	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-ovl",
 		drm_crtc_index(&ipu_crtc->base), &pdata, sizeof(pdata));
 
@@ -390,10 +392,6 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 		goto err_remove_crtc;
 	}
 
-	if (pdata->dp >= 0) {
-		ipu_vout_init(ipu_crtc);
-		ipu_ovl_init(ipu_crtc);
-	}
 	/* If this crtc is using the DP, add an overlay plane */
 	if (pdata->dp >= 0 && pdata->dma[1] > 0) {
 		ipu_crtc->plane[1] = ipu_plane_init(drm, ipu, pdata->dma[1],
@@ -410,6 +408,11 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 				goto err_put_plane0_res;
 			}
 		}
+	}
+
+	if (pdata->dp >= 0) {
+		ipu_vout_init(ipu_crtc);
+		ipu_ovl_init(ipu_crtc);
 	}
 
 	ipu_crtc->irq = ipu_plane_irq(ipu_crtc->plane[0]);

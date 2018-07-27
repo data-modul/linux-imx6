@@ -163,9 +163,6 @@ static int ipu_ovl_sanitize(struct vout_data *vout)
 	out->rect.left = crop->left;
 	out->rect.top = crop->top;
 
-/*	out->rect.left = 0;
-	out->rect.top = 0;*/
-
 	dev_dbg(vout->dev, "result in: %dx%d crop: %dx%d@%dx%d\n",
 			in->pix.width, in->pix.height, in->rect.width,
 			in->rect.height, in->rect.left, in->rect.top);
@@ -350,10 +347,7 @@ static int vout_videobuf_setup(struct vb2_queue *vq,
 		unsigned int sizes[], struct device *alloc_ctxs[])
 {
 	struct vout_data *vout = vb2q_to_vout(vq);
-	struct ipu_ch_param *cpmem = ipu_get_cpmem(vout->ipu_ch);
 	struct ipu_image *image = &vout->in_image;
-
-	memset(cpmem, 0, sizeof(*cpmem));
 
 	*num_planes = 1;
 	sizes[0] = image->pix.sizeimage;
@@ -473,13 +467,6 @@ static void vout_scaler_complete(struct ipu_image_convert_run *run, void *contex
 
 	spin_lock_irqsave(&vout->lock, flags);
 
-//	if (err) {
-//		vb2_buffer_done(q->vb, VB2_BUF_STATE_ERROR);
-//		list_move_tail(&q->list, &vout->idle_list);
-//		spin_unlock_irqrestore(&vout->lock, flags);
-//		return;
-//	}
-
 	if (vout->status == VOUT_STARTING || vout->status == VOUT_RUNNING)
 		list_move_tail(&q->list, &vout->show_list);
 	else
@@ -542,8 +529,6 @@ static void vout_videobuf_queue(struct vb2_buffer *vb)
 		vout->in_image.phys0 = vb2_dma_contig_plane_dma_addr(vb, 0);
 
 		/*FIXME: this shoud be investigated or removed */
-//		ipu_image_convert(vout->ipu, &vout->in_image, image,
-//			vout_scaler_complete, q, IPU_IMAGE_SCALE_ROUND_DOWN);
 		ipu_image_convert(vout->ipu,
 				IC_TASK_POST_PROCESSOR,
 				&vout->in_image,
@@ -748,30 +733,11 @@ static int mxc_v4l2out_open(struct file *file)
 	struct video_device *dev = video_devdata(file);
 	struct vout_data *vout = video_get_drvdata(dev);
 	struct vb2_queue *q = &vout->vidq;
-	struct ipu_soc *ipu = vout->ipu;
 	int ret;
 	int i;
 
 	if (vout->opened)
 		return -EBUSY;
-
-	vout->ipu_ch = ipu_idmac_get(ipu, vout->dma);
-	if (!vout->ipu_ch) {
-		dev_err(vout->dev, "failed to get ipu idmac channel\n");
-		return -EINVAL;
-	}
-	vout->dmfc = ipu_dmfc_get(ipu, vout->dma);
-	if (!vout->dmfc) {
-		dev_err(vout->dev, "failed to get ipu dmfc channel\n");
-		ret = -EINVAL;
-		goto failed_dmfc;
-	}
-	vout->dp = ipu_dp_get(ipu, IPU_DP_FLOW_SYNC_FG);
-	if (!vout->dp) {
-		dev_err(vout->dev, "failed to get ipu dp channel\n");
-		ret = -EINVAL;
-		goto failed_dp;
-	}
 
 	vout->opened++;
 
@@ -785,10 +751,8 @@ static int mxc_v4l2out_open(struct file *file)
 		struct vout_queue *q;
 
 		q = kzalloc(sizeof (*q), GFP_KERNEL);
-		if (!q) {
-			goto failed_bw;
+		if (!q)
 			ret = -ENOMEM;
-		}
 		q->size = vout->width_base * vout->height_base * 2;
 		q->virt = dma_alloc_coherent(NULL, q->size, &q->phys,
 					       GFP_DMA | GFP_KERNEL);
@@ -805,17 +769,8 @@ static int mxc_v4l2out_open(struct file *file)
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->buf_struct_size = sizeof(struct vb2_buffer);
-	q->dev = vout->dev;
 
 	return vb2_queue_init(q);
-
-failed_bw:
-	ipu_dp_put(vout->dp);
-failed_dp:
-	ipu_dmfc_put(vout->dmfc);
-failed_dmfc:
-	ipu_idmac_put(vout->ipu_ch);
-	return ret;
 }
 
 static int mxc_v4l2out_close(struct file *file)
@@ -830,10 +785,6 @@ static int mxc_v4l2out_close(struct file *file)
 		dma_free_coherent(NULL, q->size, q->virt, q->phys);
 		kfree(q);
 	}
-
-	ipu_dp_put(vout->dp);
-	ipu_dmfc_put(vout->dmfc);
-	ipu_idmac_put(vout->ipu_ch);
 
 	vout->opened--;
 
@@ -919,7 +870,10 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 	vout->alloc_ctx = &pdev->dev;
 	vout->dma = pdata->dma[0];
 	/* get main flow channel number */
-	vout->ipu_ch_bg = pdata->ipu_ch;
+	vout->ipu_ch = pdata->ipu_ch;
+	vout->ipu_ch_bg = pdata->ipu_ch_bg;
+	vout->dp = pdata->dp;
+	vout->dmfc = pdata->dmfc;
 
 	vout->video_dev->minor = -1;
 

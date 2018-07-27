@@ -10,7 +10,8 @@ struct ipu_vout_pdata {
 struct ipu_ovl_pdata {
 	struct ipu_soc *ipu;
 	struct ipu_dp *dp;
-	struct ipuv3_channel *ipu_ch;
+	struct ipuv3_channel *ipu_ch, *ipu_ch_bg;
+	struct dmfc_channel	*dmfc;
 	int dma[2];
 };
 
