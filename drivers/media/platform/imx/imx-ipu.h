@@ -1,10 +1,33 @@
 #ifndef __MEDIA_IMX_IPU_H
 #define __MEDIA_IMX_IPU_H
-#include <linux/videodev2.h>
+
+#include <media/v4l2-device.h>
+#include <media/v4l2-subdev.h>
+#include <media/v4l2-ctrls.h>
+#include <media/v4l2-of.h>
+#include <media/videobuf2-dma-contig.h>
+#include <video/imx-ipu-v3.h>
 
 struct ipu_fmt {
 	u32 fourcc;
 	int bytes_per_pixel;
+};
+
+
+enum codespace_sel {
+	CS_SEL_YUV = 0,
+	CS_SEL_RGB,
+	CS_SEL_ANY,
+};
+
+struct imx_media_pixfmt {
+	u32     fourcc;
+	u32     codes[4];
+	int     bpp;     /* total bpp */
+	enum ipu_color_space cs;
+	bool    planar;  /* is a planar format */
+	bool    bayer;   /* is a raw bayer format */
+	bool    ipufmt;  /* is one of the IPU internal formats */
 };
 
 int ipu_enum_fmt(struct file *file, void *fh,
@@ -31,4 +54,7 @@ int ipu_g_fmt(struct v4l2_format *f, struct v4l2_pix_format *pix);
 int ipu_enum_framesizes(struct file *file, void *fh,
 			struct v4l2_frmsizeenum *fsize);
 
+const struct imx_media_pixfmt *imx_media_find_format(u32 fourcc,
+						     enum codespace_sel cs_sel,
+						     bool allow_bayer);
 #endif /* __MEDIA_IMX_IPU_H */
