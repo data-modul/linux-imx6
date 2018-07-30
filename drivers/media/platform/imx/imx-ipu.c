@@ -19,59 +19,6 @@
 
 #include "imx-ipu.h"
 
-/*
- * These formats are in order of preference: interleaved YUV first,
- * because those are the most bandwidth efficient, followed by
- * chroma-interleaved formats, and planar formats last.
- * In each category, YUV 4:2:0 may be preferrable to 4:2:2 for bandwidth
- * reasons, if the IDMAC channel supports double read/write reduction
- * (all write channels, VDIC read channels).
- */
-static struct ipu_fmt ipu_fmt_yuv[] = {
-	{
-		.fourcc = V4L2_PIX_FMT_YUYV,
-		.bytes_per_pixel = 2,
-	}, {
-		.fourcc = V4L2_PIX_FMT_UYVY,
-		.bytes_per_pixel = 2,
-	}, {
-		.fourcc = V4L2_PIX_FMT_NV12,
-		.bytes_per_pixel = 1,
-	}, {
-		.fourcc = V4L2_PIX_FMT_NV16,
-		.bytes_per_pixel = 1,
-	}, {
-		.fourcc = V4L2_PIX_FMT_YUV420,
-		.bytes_per_pixel = 1,
-	}, {
-		.fourcc = V4L2_PIX_FMT_YVU420,
-		.bytes_per_pixel = 1,
-	}, {
-		.fourcc = V4L2_PIX_FMT_YUV422P,
-		.bytes_per_pixel = 1,
-	},
-};
-
-static struct ipu_fmt ipu_fmt_rgb[] = {
-	{
-		.fourcc = V4L2_PIX_FMT_RGB32,
-		.bytes_per_pixel = 4,
-	}, {
-		.fourcc = V4L2_PIX_FMT_RGB24,
-		.bytes_per_pixel = 3,
-	}, {
-		.fourcc = V4L2_PIX_FMT_BGR24,
-		.bytes_per_pixel = 3,
-	}, {
-		.fourcc = V4L2_PIX_FMT_RGB565,
-		.bytes_per_pixel = 2,
-	},
-	{
-		.fourcc = V4L2_PIX_FMT_BGR32,
-		.bytes_per_pixel = 4,
-	},
-};
-
 
 /* List of pixel formats for the subdevs. This must be a super-set of
  * the formats supported by the ipu image converter.
@@ -214,38 +161,14 @@ static const struct imx_media_pixfmt rgb_formats[] = {
 #define NUM_RGB_FORMATS ARRAY_SIZE(rgb_formats)
 #define NUM_MBUS_RGB_FORMATS (NUM_RGB_FORMATS - NUM_NON_MBUS_RGB_FORMATS)
 
-static const struct imx_media_pixfmt ipu_yuv_formats[] = {
-	{
-		.fourcc = V4L2_PIX_FMT_YUV32,
-		.codes  = {MEDIA_BUS_FMT_AYUV8_1X32},
-		.cs     = IPUV3_COLORSPACE_YUV,
-		.bpp    = 32,
-		.ipufmt = true,
-	},
-};
 
-#define NUM_IPU_YUV_FORMATS ARRAY_SIZE(ipu_yuv_formats)
-
-static const struct imx_media_pixfmt ipu_rgb_formats[] = {
-	{
-		.fourcc	= V4L2_PIX_FMT_RGB32,
-		.codes  = {MEDIA_BUS_FMT_ARGB8888_1X32},
-		.cs     = IPUV3_COLORSPACE_RGB,
-		.bpp    = 32,
-		.ipufmt = true,
-	},
-};
-
-#define NUM_IPU_RGB_FORMATS ARRAY_SIZE(ipu_rgb_formats)
-
-
-struct ipu_fmt *ipu_find_fmt_yuv(unsigned int pixelformat)
+const struct imx_media_pixfmt *ipu_find_fmt_yuv(unsigned int pixelformat)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(ipu_fmt_yuv); i++) {
-		fmt = &ipu_fmt_yuv[i];
+	for (i = 0; i < ARRAY_SIZE(yuv_formats); i++) {
+		fmt = &yuv_formats[i];
 		if (fmt->fourcc == pixelformat)
 			return fmt;
 	}
@@ -254,13 +177,13 @@ struct ipu_fmt *ipu_find_fmt_yuv(unsigned int pixelformat)
 }
 EXPORT_SYMBOL_GPL(ipu_find_fmt_yuv);
 
-struct ipu_fmt *ipu_find_fmt_rgb(unsigned int pixelformat)
+const struct imx_media_pixfmt *ipu_find_fmt_rgb(unsigned int pixelformat)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(ipu_fmt_rgb); i++) {
-		fmt = &ipu_fmt_rgb[i];
+	for (i = 0; i < ARRAY_SIZE(rgb_formats); i++) {
+		fmt = &rgb_formats[i];
 		if (fmt->fourcc == pixelformat)
 			return fmt;
 	}
@@ -269,9 +192,9 @@ struct ipu_fmt *ipu_find_fmt_rgb(unsigned int pixelformat)
 }
 EXPORT_SYMBOL_GPL(ipu_find_fmt_rgb);
 
-static struct ipu_fmt *ipu_find_fmt(unsigned long pixelformat)
+static const struct imx_media_pixfmt *ipu_find_fmt(unsigned long pixelformat)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	fmt = ipu_find_fmt_yuv(pixelformat);
 	if (fmt)
@@ -285,26 +208,60 @@ EXPORT_SYMBOL_GPL(ipu_find_fmt);
 int ipu_try_fmt(struct file *file, void *fh,
 		struct v4l2_format *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
+	unsigned int walign, halign;
+	u32 stride;
 
-	v4l_bound_align_image(&f->fmt.pix.width, 16, 4096, 3,
-			      &f->fmt.pix.height, 16, 4096, 1, 0);
+	fmt = imx_media_find_format(f->fmt.pix.pixelformat, CS_SEL_ANY, false);
+	if (!fmt) {
+		f->fmt.pix.pixelformat = V4L2_PIX_FMT_RGB32;
+		fmt = imx_media_find_format(V4L2_PIX_FMT_RGB32, CS_SEL_RGB,
+				false);
+	}
+
+	/*
+	 * Horizontally/vertically chroma subsampled formats must have even
+	 * width/height.
+	*/
+	switch (f->fmt.pix.pixelformat) {
+		case V4L2_PIX_FMT_YUV420:
+		case V4L2_PIX_FMT_YVU420:
+		case V4L2_PIX_FMT_NV12:
+			walign = 1;
+			halign = 1;
+			break;
+		case V4L2_PIX_FMT_YUV422P:
+		case V4L2_PIX_FMT_NV16:
+			walign = 1;
+			halign = 0;
+			break;
+		default:
+			walign = 3;
+			halign = 0;
+			break;
+	}
+
+	v4l_bound_align_image(&f->fmt.pix.width, 16, 4096, walign,
+			      &f->fmt.pix.height, 16, 4096, halign, 0);
+
+	stride = fmt->planar ? f->fmt.pix.width
+		    : (f->fmt.pix.width * fmt->bpp) >> 3;
+	switch (f->fmt.pix.pixelformat) {
+		case V4L2_PIX_FMT_YUV420:
+		case V4L2_PIX_FMT_YVU420:
+		case V4L2_PIX_FMT_YUV422P:
+			stride = round_up(stride, 16);
+			break;
+		default:
+			stride = round_up(stride, 8);
+			break;
+	}
 
 	f->fmt.pix.field = V4L2_FIELD_NONE;
-
-	fmt = ipu_find_fmt(f->fmt.pix.pixelformat);
-	if (!fmt)
-		return -EINVAL;
-
-	f->fmt.pix.bytesperline = f->fmt.pix.width * fmt->bytes_per_pixel;
-	f->fmt.pix.sizeimage = f->fmt.pix.bytesperline * f->fmt.pix.height;
-	if (fmt->fourcc == V4L2_PIX_FMT_YUV420 ||
-	    fmt->fourcc == V4L2_PIX_FMT_YVU420 ||
-	    fmt->fourcc == V4L2_PIX_FMT_NV12)
-		f->fmt.pix.sizeimage = f->fmt.pix.sizeimage * 3 / 2;
-	else if (fmt->fourcc == V4L2_PIX_FMT_YUV422P ||
-		 fmt->fourcc == V4L2_PIX_FMT_NV16)
-		f->fmt.pix.sizeimage *= 2;
+	f->fmt.pix.bytesperline = stride;
+	f->fmt.pix.sizeimage = fmt->planar ?
+			       (stride * f->fmt.pix.height * fmt->bpp) >> 3 :
+			       stride * f->fmt.pix.height;
 
 	f->fmt.pix.priv = 0;
 
@@ -315,7 +272,7 @@ EXPORT_SYMBOL_GPL(ipu_try_fmt);
 int ipu_try_fmt_rgb(struct file *file, void *fh,
 		struct v4l2_format *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	fmt = ipu_find_fmt_rgb(f->fmt.pix.pixelformat);
 	if (!fmt)
@@ -328,7 +285,7 @@ EXPORT_SYMBOL_GPL(ipu_try_fmt_rgb);
 int ipu_try_fmt_yuv(struct file *file, void *fh,
 		struct v4l2_format *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	fmt = ipu_find_fmt_yuv(f->fmt.pix.pixelformat);
 	if (!fmt)
@@ -341,12 +298,12 @@ EXPORT_SYMBOL_GPL(ipu_try_fmt_yuv);
 int ipu_enum_fmt_rgb(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
-	if (f->index >= ARRAY_SIZE(ipu_fmt_rgb))
+	if (f->index >= ARRAY_SIZE(rgb_formats))
 		return -EINVAL;
 
-	fmt = &ipu_fmt_rgb[f->index];
+	fmt = &rgb_formats[f->index];
 
 	f->pixelformat = fmt->fourcc;
 
@@ -357,12 +314,12 @@ EXPORT_SYMBOL_GPL(ipu_enum_fmt_rgb);
 int ipu_enum_fmt_yuv(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
-	if (f->index >= ARRAY_SIZE(ipu_fmt_yuv))
+	if (f->index >= ARRAY_SIZE(yuv_formats))
 		return -EINVAL;
 
-	fmt = &ipu_fmt_yuv[f->index];
+	fmt = &yuv_formats[f->index];
 
 	f->pixelformat = fmt->fourcc;
 
@@ -373,16 +330,16 @@ EXPORT_SYMBOL_GPL(ipu_enum_fmt_yuv);
 int ipu_enum_fmt(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 	int index = f->index;
 
-	if (index >= ARRAY_SIZE(ipu_fmt_yuv)) {
-		index -= ARRAY_SIZE(ipu_fmt_yuv);
-		if (index >= ARRAY_SIZE(ipu_fmt_rgb))
+	if (index >= ARRAY_SIZE(yuv_formats)) {
+		index -= ARRAY_SIZE(yuv_formats);
+		if (index >= ARRAY_SIZE(rgb_formats))
 			return -EINVAL;
-		fmt = &ipu_fmt_rgb[index];
+		fmt = &rgb_formats[index];
 	} else {
-		fmt = &ipu_fmt_yuv[index];
+		fmt = &yuv_formats[index];
 	}
 
 	f->pixelformat = fmt->fourcc;
@@ -409,7 +366,7 @@ EXPORT_SYMBOL_GPL(ipu_s_fmt);
 int ipu_s_fmt_rgb(struct file *file, void *fh,
 		struct v4l2_format *f, struct v4l2_pix_format *pix)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	fmt = ipu_find_fmt_rgb(f->fmt.pix.pixelformat);
 	if (!fmt)
@@ -422,7 +379,7 @@ EXPORT_SYMBOL_GPL(ipu_s_fmt_rgb);
 int ipu_s_fmt_yuv(struct file *file, void *fh,
 		struct v4l2_format *f, struct v4l2_pix_format *pix)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	fmt = ipu_find_fmt_yuv(f->fmt.pix.pixelformat);
 	if (!fmt)
@@ -444,7 +401,7 @@ EXPORT_SYMBOL_GPL(ipu_g_fmt);
 int ipu_enum_framesizes(struct file *file, void *fh,
 			struct v4l2_frmsizeenum *fsize)
 {
-	struct ipu_fmt *fmt;
+	const struct imx_media_pixfmt *fmt;
 
 	if (fsize->index != 0)
 		return -EINVAL;
@@ -463,10 +420,9 @@ int ipu_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ipu_enum_framesizes);
-/*--------------------------------------------------------------------*/
 
-static const
-struct imx_media_pixfmt *__find_format(u32 fourcc,
+
+static const struct imx_media_pixfmt *__find_format(u32 fourcc,
 				       u32 code,
 				       bool allow_non_mbus,
 				       bool allow_bayer,
@@ -523,6 +479,7 @@ static const struct imx_media_pixfmt *find_format(u32 fourcc,
 		return NULL;
 	}
 }
+
 
 const struct imx_media_pixfmt *
 imx_media_find_format(u32 fourcc, enum codespace_sel cs_sel, bool allow_bayer)

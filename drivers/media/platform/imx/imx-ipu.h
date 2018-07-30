@@ -8,12 +8,6 @@
 #include <media/videobuf2-dma-contig.h>
 #include <video/imx-ipu-v3.h>
 
-struct ipu_fmt {
-	u32 fourcc;
-	int bytes_per_pixel;
-};
-
-
 enum codespace_sel {
 	CS_SEL_YUV = 0,
 	CS_SEL_RGB,
@@ -36,8 +30,8 @@ int ipu_enum_fmt_rgb(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f);
 int ipu_enum_fmt_yuv(struct file *file, void *fh,
 		struct v4l2_fmtdesc *f);
-struct ipu_fmt *ipu_find_fmt_rgb(unsigned int pixelformat);
-struct ipu_fmt *ipu_find_fmt_yuv(unsigned int pixelformat);
+const struct imx_media_pixfmt *ipu_find_fmt_rgb(unsigned int pixelformat);
+const struct imx_media_pixfmt *ipu_find_fmt_yuv(unsigned int pixelformat);
 int ipu_try_fmt(struct file *file, void *fh,
 		struct v4l2_format *f);
 int ipu_try_fmt_rgb(struct file *file, void *fh,
