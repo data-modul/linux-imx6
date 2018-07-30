@@ -16,13 +16,10 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/fs.h>
-#include <linux/timer.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include <linux/log2.h>
 
 #include <linux/platform_device.h>
-#include <linux/interrupt.h>
 #include <media/v4l2-mem2mem.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -30,33 +27,14 @@
 #include <media/videobuf2-dma-contig.h>
 #include <video/imx-ipu-v3.h>
 #include <video/imx-ipu-image-convert.h>
-#include <media/imx.h>
 
 #include "../imx-ipu.h"
-
-MODULE_DESCRIPTION("i.MX5/6 Post-Processing mem2mem device");
-MODULE_AUTHOR("Steve Longerbeam <steve_longerbeam@mentor.com>");
-MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1");
-
-static int instrument;
-module_param(instrument, int, 0);
-MODULE_PARM_DESC(instrument, "1 = enable conversion time measurement");
 
 /* Flags that indicate a format can be used for capture/output */
 #define MEM2MEM_CAPTURE BIT(0)
 #define MEM2MEM_OUTPUT  BIT(1)
 
 #define MEM2MEM_NAME		"imx-m2m"
-
-/* Per queue */
-#define MEM2MEM_DEF_NUM_BUFS	VIDEO_MAX_FRAME
-/* In bytes, per queue */
-#define MEM2MEM_VID_MEM_LIMIT	SZ_256M
-
-#define dprintk(dev, fmt, arg...) \
-	v4l2_dbg(1, 1, &dev->v4l2_dev, "%s: " fmt, __func__, ## arg)
-
 
 #define MIN_W 16
 #define MIN_H 16
@@ -172,7 +150,7 @@ static void m2mx_job_abort(void *priv)
 
 	/* Will cancel the transaction in the next interrupt handler */
 	if(ctx->ic_ctx)
-	ipu_image_convert_abort(ctx->ic_ctx);
+		ipu_image_convert_abort(ctx->ic_ctx);
 }
 
 static void m2mx_device_run(void *priv)
@@ -183,12 +161,12 @@ static void m2mx_device_run(void *priv)
 	struct ipu_image_convert_run *run;
 	int ret;
 
+	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
+	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+
 	run = kzalloc(sizeof(*run), GFP_KERNEL);
 	if (!run)
 		goto err;
-
-	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
-	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 
 	run->ctx = ctx->ic_ctx;
 	run->in_phys = vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
@@ -297,51 +275,21 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *fh,
 	return m2mx_g_fmt(ctx, f);
 }
 
-/************************************************************/
 static int mem2mem_try_fmt(struct file *file, void *priv,
 			   struct v4l2_format *f)
 {
-	const struct imx_media_pixfmt *cc;
 	struct m2mx_ctx *ctx = fh_to_ctx(priv);
 	struct mem2mem_q_data *q_data = get_q_data(ctx, f->type);
-	unsigned int walign, halign;
-	u32 stride;
 
-	cc = imx_media_find_format(f->fmt.pix.pixelformat, CS_SEL_ANY, false);
-	if (!cc) {
-		f->fmt.pix.pixelformat = V4L2_PIX_FMT_RGB32;
-		cc = imx_media_find_format(V4L2_PIX_FMT_RGB32, CS_SEL_RGB,
-					   false);
-	}
-
-	/*
-	 * Horizontally/vertically chroma subsampled formats must have even
-	 * width/height.
-	 */
-	switch (f->fmt.pix.pixelformat) {
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-	case V4L2_PIX_FMT_NV12:
-		walign = 1;
-		halign = 1;
-		break;
-	case V4L2_PIX_FMT_YUV422P:
-	case V4L2_PIX_FMT_NV16:
-		walign = 1;
-		halign = 0;
-		break;
-	default:
-		halign = 0;
-		break;
-	}
-	if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+	/*TODO: FIX ROTATION feature*/
+/*	if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {*/
 		/*
 		 * The IC burst reads 8 pixels at a time. Reading beyond the
 		 * end of the line is usually acceptable. Those pixels are
 		 * ignored, unless the IC has to write the scaled line in
 		 * reverse.
 		 */
-		if (!ipu_rot_mode_is_irt(ctx->rot_mode) &&
+/*		if (!ipu_rot_mode_is_irt(ctx->rot_mode) &&
 		    ctx->rot_mode && IPU_ROT_BIT_HFLIP)
 			walign = 3;
 	} else {
@@ -349,55 +297,37 @@ static int mem2mem_try_fmt(struct file *file, void *priv,
 			switch (f->fmt.pix.pixelformat) {
 			case V4L2_PIX_FMT_YUV420:
 			case V4L2_PIX_FMT_YVU420:
-			case V4L2_PIX_FMT_YUV422P:
+			case V4L2_PIX_FMT_YUV422P:*/
 				/*
 				 * Align to 16x16 pixel blocks for planar 4:2:0
 				 * chroma subsampled formats to guarantee
 				 * 8-byte aligned line start addresses in the
 				 * chroma planes.
 				 */
-				walign = 4;
+/*				walign = 4;
 				halign = 4;
 				break;
-			default:
+			default:*/
 				/*
 				 * Align to 8x8 pixel IRT block size for all
 				 * other formats.
 				 */
-				walign = 3;
+/*				walign = 3;
 				halign = 3;
 				break;
 			}
-		} else {
+		} else {*/
 			/*
 			 * The IC burst writes 8 pixels at a time.
 			 *
 			 * TODO: support unaligned width with via
 			 * V4L2_SEL_TGT_COMPOSE_PADDED.
 			 */
-			walign = 3;
+/*			walign = 3;
 		}
-	}
-	v4l_bound_align_image(&f->fmt.pix.width, MIN_W, MAX_W, walign,
-			      &f->fmt.pix.height, MIN_H, MAX_H, halign, 0);
-	stride = cc->planar ? f->fmt.pix.width
-			    : (f->fmt.pix.width * cc->bpp) >> 3;
-	switch (f->fmt.pix.pixelformat) {
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-	case V4L2_PIX_FMT_YUV422P:
-		stride = round_up(stride, 16);
-		break;
-	default:
-		stride = round_up(stride, 8);
-		break;
-	}
+	}*/
 
-	f->fmt.pix.field = V4L2_FIELD_NONE;
-	f->fmt.pix.bytesperline = stride;
-	f->fmt.pix.sizeimage = cc->planar ?
-			       (stride * f->fmt.pix.height * cc->bpp) >> 3 :
-			       stride * f->fmt.pix.height;
+	ipu_try_fmt(file, priv, f);
 
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		f->fmt.pix.colorspace = q_data->cur_fmt.colorspace;
@@ -411,50 +341,8 @@ static int mem2mem_try_fmt(struct file *file, void *priv,
 		f->fmt.pix.quantization = V4L2_QUANTIZATION_DEFAULT;
 	}
 
-	f->fmt.pix.priv = 0;
-
 	return 0;
 }
-
-/*static int m2mx_try_fmt(struct m2mx_ctx *ctx, struct v4l2_format *f)
-{
-	struct ipu_image test_in, test_out;
-	struct ipu_image *pin, *pout;
-
-	pin = get_image_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
-	pout = get_image_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE);
-
-	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		test_out.pix = f->fmt.pix;
-		test_in = *pin;
-	} else {
-		test_in.pix = f->fmt.pix;
-		test_out = *pout;
-	}
-
-	ipu_image_convert_adjust(&test_in, &test_out, ctx->rot_mode);
-
-	f->fmt.pix = (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ?
-		test_out.pix : test_in.pix;
-
-	return 0;
-}
-
-static int vidioc_try_fmt_vid_cap(struct file *file, void *fh,
-				  struct v4l2_format *f)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return m2mx_try_fmt(ctx, f);
-}
-
-static int vidioc_try_fmt_vid_out(struct file *file, void *fh,
-				  struct v4l2_format *f)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return m2mx_try_fmt(ctx, f);
-}*/
 
 static int mem2mem_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 {
@@ -510,64 +398,6 @@ static int mem2mem_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 
 	return 0;
 }
-
-/*static int m2mx_s_fmt(struct m2mx_ctx *ctx, struct v4l2_format *f)
-{
-	struct m2mx_dev *dev = ctx->dev;
-	struct ipu_image test_in, test_out;
-	struct ipu_image *pin, *pout;
-	struct vb2_queue *vq;
-
-	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
-	if (!vq)
-		return -EINVAL;
-
-	if (vb2_is_busy(vq)) {
-		v4l2_err(&dev->v4l2_dev, "%s: queue busy\n", __func__);
-		return -EBUSY;
-	}
-
-	pin = get_image_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
-	pout = get_image_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE);
-
-	pin->pix.sizeimage = f->fmt.pix.sizeimage;
-	pout->pix.sizeimage = f->fmt.pix.sizeimage;
-
-	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		test_out.pix = f->fmt.pix;
-		test_in = *pin;
-	} else {
-		test_in.pix = f->fmt.pix;
-		test_out = *pout;
-	}
-
-	ipu_image_convert_adjust(&test_in, &test_out, ctx->rot_mode);
-
-	f->fmt.pix = (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ?
-		test_out.pix : test_in.pix;
-	*pin = test_in;
-	*pout = test_out;
-
-	return 0;
-}
-
-static int vidioc_s_fmt_vid_cap(struct file *file, void *fh,
-				struct v4l2_format *f)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return m2mx_s_fmt(ctx, f);
-}
-
-static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
-				struct v4l2_format *f)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return m2mx_s_fmt(ctx, f);
-}*/
-
-
 
 static int mem2mem_g_selection(struct file *file, void *priv,
 			       struct v4l2_selection *s)
@@ -656,61 +486,6 @@ static int mem2mem_s_selection(struct file *file, void *priv,
 	return 0;
 }
 
-
-
-static int vidioc_reqbufs(struct file *file, void *fh,
-			  struct v4l2_requestbuffers *reqbufs)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_reqbufs(file, ctx->fh.m2m_ctx, reqbufs);
-}
-
-static int vidioc_querybuf(struct file *file, void *fh,
-			   struct v4l2_buffer *buf)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_querybuf(file, ctx->fh.m2m_ctx, buf);
-}
-
-static int vidioc_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_qbuf(file, ctx->fh.m2m_ctx, buf);
-}
-
-static int vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_dqbuf(file, ctx->fh.m2m_ctx, buf);
-}
-
-static int vidioc_expbuf(struct file *file, void *fh,
-			 struct v4l2_exportbuffer *eb)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_expbuf(file, ctx->fh.m2m_ctx, eb);
-}
-
-static int vidioc_streamon(struct file *file, void *fh,
-			   enum v4l2_buf_type type)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-
-	return v4l2_m2m_streamon(file, ctx->fh.m2m_ctx, type);
-}
-
-static int vidioc_streamoff(struct file *file, void *fh,
-			    enum v4l2_buf_type type)
-{
-	struct m2mx_ctx *ctx = fh_to_ctx(fh);
-	return v4l2_m2m_streamoff(file, ctx->fh.m2m_ctx, type);
-}
-
 static int m2mx_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct m2mx_ctx *ctx = container_of(ctrl->handler,
@@ -742,6 +517,7 @@ static int m2mx_s_ctrl(struct v4l2_ctrl *ctrl)
 	if (ret)
 		return ret;
 	
+
 	if (rot_mode != ctx->rot_mode) {
 		struct vb2_queue *cap_q;
 		
@@ -799,27 +575,27 @@ static const struct v4l2_ioctl_ops m2mx_ioctl_ops = {
 
 	.vidioc_enum_fmt_vid_cap = vidioc_enum_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap	= vidioc_g_fmt_vid_cap,
-	.vidioc_try_fmt_vid_cap	= mem2mem_try_fmt,//vidioc_try_fmt_vid_cap,
-	.vidioc_s_fmt_vid_cap	= mem2mem_s_fmt,//vidioc_s_fmt_vid_cap,
+	.vidioc_try_fmt_vid_cap	= mem2mem_try_fmt,
+	.vidioc_s_fmt_vid_cap	= mem2mem_s_fmt,
 
 	.vidioc_enum_fmt_vid_out = vidioc_enum_fmt_vid_out,
 	.vidioc_g_fmt_vid_out	= vidioc_g_fmt_vid_out,
-	.vidioc_try_fmt_vid_out	= mem2mem_try_fmt,//vidioc_try_fmt_vid_out,
-	.vidioc_s_fmt_vid_out	= mem2mem_s_fmt,//vidioc_s_fmt_vid_out,
+	.vidioc_try_fmt_vid_out	= mem2mem_try_fmt,
+	.vidioc_s_fmt_vid_out	= mem2mem_s_fmt,
 
 	.vidioc_g_selection	= mem2mem_g_selection,
 	.vidioc_s_selection	= mem2mem_s_selection,
 
-	.vidioc_reqbufs		= v4l2_m2m_ioctl_reqbufs,//vidioc_reqbufs,
-	.vidioc_querybuf	= v4l2_m2m_ioctl_querybuf,//vidioc_querybuf,
+	.vidioc_reqbufs		= v4l2_m2m_ioctl_reqbufs,
+	.vidioc_querybuf	= v4l2_m2m_ioctl_querybuf,
 
-	.vidioc_qbuf		= v4l2_m2m_ioctl_qbuf,//vidioc_qbuf,
-	.vidioc_dqbuf		= v4l2_m2m_ioctl_dqbuf,//vidioc_dqbuf,
-	.vidioc_expbuf		= v4l2_m2m_ioctl_expbuf,//vidioc_expbuf,
-	.vidioc_create_bufs	= v4l2_m2m_ioctl_create_bufs,//v4l2_m2m_ioctl_create_bufs,
+	.vidioc_qbuf		= v4l2_m2m_ioctl_qbuf,
+	.vidioc_dqbuf		= v4l2_m2m_ioctl_dqbuf,
+	.vidioc_expbuf		= v4l2_m2m_ioctl_expbuf,
+	.vidioc_create_bufs	= v4l2_m2m_ioctl_create_bufs,
 
-	.vidioc_streamon	= v4l2_m2m_ioctl_streamon,//vidioc_streamon,
-	.vidioc_streamoff	= v4l2_m2m_ioctl_streamoff,//vidioc_streamoff,
+	.vidioc_streamon	= v4l2_m2m_ioctl_streamon,
+	.vidioc_streamoff	= v4l2_m2m_ioctl_streamoff,
 };
 
 /*
@@ -888,20 +664,6 @@ static void m2mx_buf_queue(struct vb2_buffer *vb)
 
 	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, to_vb2_v4l2_buffer(vb));
 }
-/*
-static void m2mx_wait_prepare(struct vb2_queue *q)
-{
-	struct m2mx_ctx *ctx = vb2_get_drv_priv(q);
-
-	m2mx_unlock(ctx);
-}
-
-static void m2mx_wait_finish(struct vb2_queue *q)
-{
-	struct m2mx_ctx *ctx = vb2_get_drv_priv(q);
-
-	m2mx_lock(ctx);
-}*/
 
 static void ipu_image_from_q_data(struct ipu_image *im,
 		struct mem2mem_q_data *q_data)
@@ -985,8 +747,8 @@ static struct vb2_ops m2mx_qops = {
 	.queue_setup	 = m2mx_queue_setup,
 	.buf_prepare	 = m2mx_buf_prepare,
 	.buf_queue	 = m2mx_buf_queue,
-	.wait_prepare	 = vb2_ops_wait_prepare,//m2mx_wait_prepare,
-	.wait_finish	 = vb2_ops_wait_finish,//m2mx_wait_finish,
+	.wait_prepare	 = vb2_ops_wait_prepare,
+	.wait_finish	 = vb2_ops_wait_finish,
 	.start_streaming = m2mx_start_streaming,
 	.stop_streaming  = m2mx_stop_streaming,
 };
@@ -1112,44 +874,13 @@ static int m2mx_release(struct file *file)
 	return 0;
 }
 
-static unsigned int m2mx_poll(struct file *file,
-			       struct poll_table_struct *wait)
-{
-	struct m2mx_dev *dev = video_drvdata(file);
-	struct m2mx_ctx *ctx = fh_to_ctx(file->private_data);
-	int ret;
-
-	if (mutex_lock_interruptible(&dev->dev_mutex))
-		return -ERESTARTSYS;
-
-	ret = v4l2_m2m_poll(file, ctx->fh.m2m_ctx, wait);
-
-	mutex_unlock(&dev->dev_mutex);
-	return ret;
-}
-
-static int m2mx_mmap(struct file *file, struct vm_area_struct *vma)
-{
-	struct m2mx_dev *dev = video_drvdata(file);
-	struct m2mx_ctx *ctx = fh_to_ctx(file->private_data);
-	int ret;
-
-	if (mutex_lock_interruptible(&dev->dev_mutex))
-		return -ERESTARTSYS;
-
-	ret = v4l2_m2m_mmap(file, ctx->fh.m2m_ctx, vma);
-
-	mutex_unlock(&dev->dev_mutex);
-	return ret;
-}
-
 static const struct v4l2_file_operations m2mx_fops = {
 	.owner		= THIS_MODULE,
 	.open		= m2mx_open,
 	.release	= m2mx_release,
-	.poll		= v4l2_m2m_fop_poll,//m2mx_poll,
+	.poll		= v4l2_m2m_fop_poll,
 	.unlocked_ioctl	= video_ioctl2,
-	.mmap		= v4l2_m2m_fop_mmap,//m2mx_mmap,
+	.mmap		= v4l2_m2m_fop_mmap,
 };
 
 static struct video_device m2mx_videodev = {
@@ -1230,7 +961,6 @@ static int m2mx_probe(struct platform_device *pdev)
 	struct m2mx_dev *dev;
 	struct video_device *vfd;
 	int ret;
-	struct ipu_soc *ipu = dev_get_drvdata(pdev->dev.parent);
 
 	pdev->dev.dma_mask = &vout_dmamask;
 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
@@ -1256,7 +986,7 @@ static int m2mx_probe(struct platform_device *pdev)
 
 	vfd = video_device_alloc();
 	if (!vfd) {
-		return ERR_PTR(-ENOMEM);
+		return -ENOMEM;
 	}
 
 	*vfd = m2mx_videodev;
@@ -1287,9 +1017,6 @@ static int m2mx_probe(struct platform_device *pdev)
 		  vfd->num, ipu_get_num(dev->ipu));
 
 	platform_set_drvdata(pdev, dev);
-
-//	dev->alloc_ctx = &pdev->dev;
-
 
 	return 0;
 
@@ -1332,3 +1059,6 @@ static struct platform_driver m2mx_pdrv = {
 };
 
 module_platform_driver(m2mx_pdrv);
+MODULE_DESCRIPTION("i.MX IPUv3 mem2mem scaler/CSC driver");
+MODULE_AUTHOR("Sascha Hauer <s.hauer@pengutronix.de>");
+MODULE_LICENSE("GPL");
