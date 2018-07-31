@@ -1298,8 +1298,6 @@ static void initialize_hdmi_ih_mutes(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, 0xff, HDMI_GP_MASK);
 	hdmi_writeb(hdmi, 0xff, HDMI_A_APIINTMSK);
 	hdmi_writeb(hdmi, 0xff, HDMI_CEC_MASK);
-	hdmi_writeb(hdmi, 0xff, HDMI_I2CM_INT);
-	hdmi_writeb(hdmi, 0xff, HDMI_I2CM_CTLINT);
 
 	/* Disable interrupts in the IH_MUTE_* registers */
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_FC_STAT0);
@@ -1307,7 +1305,6 @@ static void initialize_hdmi_ih_mutes(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_FC_STAT2);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_AS_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_PHY_STAT0);
-	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_I2CM_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_CEC_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_VP_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_I2CMPHY_STAT0);
