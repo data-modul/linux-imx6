@@ -1179,11 +1179,10 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 	hdmi->vic = drm_match_cea_mode(mode);
 
-	if (!hdmi->vic) {
-		dev_dbg(hdmi->dev, "Non-CEA mode used in HDMI\n");
-	} else {
+	if (drm_detect_hdmi_monitor(hdmi->edid) && hdmi->vic)
 		dev_dbg(hdmi->dev, "CEA mode used vic=%d\n", hdmi->vic);
-	}
+	else
+		dev_dbg(hdmi->dev, "Non-CEA mode used in HDMI\n");
 
 	if ((hdmi->vic == 6) || (hdmi->vic == 7) ||
 	    (hdmi->vic == 21) || (hdmi->vic == 22) ||
