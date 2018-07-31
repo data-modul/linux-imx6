@@ -15,92 +15,14 @@
 #include <drm/drm_fourcc.h>
 #include "ipu-prv.h"
 
-struct ipu_cpmem_word {
-	u32 data[5];
-	u32 res[3];
-};
-
-struct ipu_ch_param {
-	struct ipu_cpmem_word word[2];
-};
-
-struct ipu_cpmem {
-	struct ipu_ch_param __iomem *base;
-	u32 module;
-	spinlock_t lock;
-	int use_count;
-	struct ipu_soc *ipu;
-};
-
-#define IPU_CPMEM_WORD(word, ofs, size) ((((word) * 160 + (ofs)) << 8) | (size))
-
-#define IPU_FIELD_UBO		IPU_CPMEM_WORD(0, 46, 22)
-#define IPU_FIELD_VBO		IPU_CPMEM_WORD(0, 68, 22)
-#define IPU_FIELD_IOX		IPU_CPMEM_WORD(0, 90, 4)
-#define IPU_FIELD_RDRW		IPU_CPMEM_WORD(0, 94, 1)
-#define IPU_FIELD_SO		IPU_CPMEM_WORD(0, 113, 1)
-#define IPU_FIELD_SLY		IPU_CPMEM_WORD(1, 102, 14)
-#define IPU_FIELD_SLUV		IPU_CPMEM_WORD(1, 128, 14)
-
-#define IPU_FIELD_XV		IPU_CPMEM_WORD(0, 0, 10)
-#define IPU_FIELD_YV		IPU_CPMEM_WORD(0, 10, 9)
-#define IPU_FIELD_XB		IPU_CPMEM_WORD(0, 19, 13)
-#define IPU_FIELD_YB		IPU_CPMEM_WORD(0, 32, 12)
-#define IPU_FIELD_NSB_B		IPU_CPMEM_WORD(0, 44, 1)
-#define IPU_FIELD_CF		IPU_CPMEM_WORD(0, 45, 1)
-#define IPU_FIELD_SX		IPU_CPMEM_WORD(0, 46, 12)
-#define IPU_FIELD_SY		IPU_CPMEM_WORD(0, 58, 11)
-#define IPU_FIELD_NS		IPU_CPMEM_WORD(0, 69, 10)
-#define IPU_FIELD_SDX		IPU_CPMEM_WORD(0, 79, 7)
-#define IPU_FIELD_SM		IPU_CPMEM_WORD(0, 86, 10)
-#define IPU_FIELD_SCC		IPU_CPMEM_WORD(0, 96, 1)
-#define IPU_FIELD_SCE		IPU_CPMEM_WORD(0, 97, 1)
-#define IPU_FIELD_SDY		IPU_CPMEM_WORD(0, 98, 7)
-#define IPU_FIELD_SDRX		IPU_CPMEM_WORD(0, 105, 1)
-#define IPU_FIELD_SDRY		IPU_CPMEM_WORD(0, 106, 1)
-#define IPU_FIELD_BPP		IPU_CPMEM_WORD(0, 107, 3)
-#define IPU_FIELD_DEC_SEL	IPU_CPMEM_WORD(0, 110, 2)
-#define IPU_FIELD_DIM		IPU_CPMEM_WORD(0, 112, 1)
-#define IPU_FIELD_BNDM		IPU_CPMEM_WORD(0, 114, 3)
-#define IPU_FIELD_BM		IPU_CPMEM_WORD(0, 117, 2)
-#define IPU_FIELD_ROT		IPU_CPMEM_WORD(0, 119, 1)
-#define IPU_FIELD_ROT_HF_VF	IPU_CPMEM_WORD(0, 119, 3)
-#define IPU_FIELD_HF		IPU_CPMEM_WORD(0, 120, 1)
-#define IPU_FIELD_VF		IPU_CPMEM_WORD(0, 121, 1)
-#define IPU_FIELD_THE		IPU_CPMEM_WORD(0, 122, 1)
-#define IPU_FIELD_CAP		IPU_CPMEM_WORD(0, 123, 1)
-#define IPU_FIELD_CAE		IPU_CPMEM_WORD(0, 124, 1)
-#define IPU_FIELD_FW		IPU_CPMEM_WORD(0, 125, 13)
-#define IPU_FIELD_FH		IPU_CPMEM_WORD(0, 138, 12)
-#define IPU_FIELD_EBA0		IPU_CPMEM_WORD(1, 0, 29)
-#define IPU_FIELD_EBA1		IPU_CPMEM_WORD(1, 29, 29)
-#define IPU_FIELD_ILO		IPU_CPMEM_WORD(1, 58, 20)
-#define IPU_FIELD_NPB		IPU_CPMEM_WORD(1, 78, 7)
-#define IPU_FIELD_PFS		IPU_CPMEM_WORD(1, 85, 4)
-#define IPU_FIELD_ALU		IPU_CPMEM_WORD(1, 89, 1)
-#define IPU_FIELD_ALBM		IPU_CPMEM_WORD(1, 90, 3)
-#define IPU_FIELD_ID		IPU_CPMEM_WORD(1, 93, 2)
-#define IPU_FIELD_TH		IPU_CPMEM_WORD(1, 95, 7)
-#define IPU_FIELD_SL		IPU_CPMEM_WORD(1, 102, 14)
-#define IPU_FIELD_WID0		IPU_CPMEM_WORD(1, 116, 3)
-#define IPU_FIELD_WID1		IPU_CPMEM_WORD(1, 119, 3)
-#define IPU_FIELD_WID2		IPU_CPMEM_WORD(1, 122, 3)
-#define IPU_FIELD_WID3		IPU_CPMEM_WORD(1, 125, 3)
-#define IPU_FIELD_OFS0		IPU_CPMEM_WORD(1, 128, 5)
-#define IPU_FIELD_OFS1		IPU_CPMEM_WORD(1, 133, 5)
-#define IPU_FIELD_OFS2		IPU_CPMEM_WORD(1, 138, 5)
-#define IPU_FIELD_OFS3		IPU_CPMEM_WORD(1, 143, 5)
-#define IPU_FIELD_SXYS		IPU_CPMEM_WORD(1, 148, 1)
-#define IPU_FIELD_CRE		IPU_CPMEM_WORD(1, 149, 1)
-#define IPU_FIELD_DEC_SEL2	IPU_CPMEM_WORD(1, 150, 1)
-
-static inline struct ipu_ch_param __iomem *
-ipu_get_cpmem(struct ipuv3_channel *ch)
+inline struct ipu_ch_param
+__iomem *ipu_get_cpmem(struct ipuv3_channel *ch)
 {
 	struct ipu_cpmem *cpmem = ch->ipu->cpmem_priv;
 
 	return cpmem->base + ch->num;
 }
+
 
 static void ipu_ch_param_write_field(struct ipuv3_channel *ch, u32 wbs, u32 v)
 {
@@ -128,7 +50,7 @@ static void ipu_ch_param_write_field(struct ipuv3_channel *ch, u32 wbs, u32 v)
 	}
 }
 
-static u32 ipu_ch_param_read_field(struct ipuv3_channel *ch, u32 wbs)
+u32 ipu_ch_param_read_field(struct ipuv3_channel *ch, u32 wbs)
 {
 	struct ipu_ch_param __iomem *base = ipu_get_cpmem(ch);
 	u32 bit = (wbs >> 8) % 160;

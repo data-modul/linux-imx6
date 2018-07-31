@@ -193,6 +193,11 @@ struct ipu_image_convert_priv {
 
 static const struct ipu_image_convert_dma_chan
 image_convert_dma_chan[IC_NUM_TASKS] = {
+	[IC_TASK_ENCODER] = {
+		.out = IPUV3_CHANNEL_IC_PRP_ENC_MEM,
+		.rot_in = IPUV3_CHANNEL_MEM_ROT_ENC,
+		.rot_out = IPUV3_CHANNEL_ROT_ENC_MEM,
+	},
 	[IC_TASK_VIEWFINDER] = {
 		.in = IPUV3_CHANNEL_MEM_IC_PRP_VF,
 		.out = IPUV3_CHANNEL_IC_PRP_VF_MEM,

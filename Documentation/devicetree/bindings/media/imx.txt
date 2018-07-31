@@ -1,0 +1,449 @@
+Freescale i.MX Video Capture, Mem2Mem
+
+Video Mem2Mem node
+------------------
+
+This is the imx video mem2mem device node. The mem2mem node is an IPU
+client and uses the register-level primitives of the IPU, so it does
+not require reg or interrupt properties. Only a compatible property
+and the ipu phandle is required.
+
+Required properties:
+- compatible	: "fsl,imx-video-mem2mem";
+- ipu           : the ipu phandle;
+
+Example:
+
+/ {
+	ipum2m0: ipum2m@ipu1 {
+		compatible = "fsl,imx-video-mem2mem";
+		ipu = <&ipu1>;
+		status = "okay";
+	};
+};
+
+
+Video Capture node
+------------------
+
+This is the imx video capture host interface node. The host node is an IPU
+client and uses the register-level primitives of the IPU, so it does
+not require reg or interrupt properties. Only a compatible property
+and a list of IPU CSI port phandles is required.
+
+Required properties:
+- compatible	: "fsl,imx-video-capture";
+- ports         : a list of CSI port phandles this device will control
+
+Optional properties:
+- fim           : child node that sets boot-time behavior of the
+		  Frame Interval Monitor;
+
+fim child node
+--------------
+
+This is an optional child node of the video capture node. It can
+be used to modify the default control values for the video capture
+Frame Interval Monitor. Refer to Documentation/video4linux/imx_camera.txt
+for more info on the Frame Interval Monitor.
+
+Optional properties:
+- enable          : enable (1) or disable (0) the FIM;
+- num-avg         : how many frame intervals the FIM will average;
+- num-skip        : how many frames the FIM will skip after a video
+		    capture restart before beginning to sample frame
+		    intervals;
+- tolerance-range : a range of tolerances for the averaged frame
+		    interval error, specified as <min max>, in usec.
+		    The FIM will signal a frame interval error if
+		    min < error < max. If the max is <= min, then
+		    tolerance range is disabled (interval error if
+		    error > min).
+- input-capture-channel: an input capture channel and channel flags,
+			 specified as <chan flags>. The channel number
+			 must be 0 or 1. The flags can be
+			 IRQ_TYPE_EDGE_RISING, IRQ_TYPE_EDGE_FALLING, or
+			 IRQ_TYPE_EDGE_BOTH, and specify which input
+			 capture signal edge will trigger the event. If
+			 an input capture channel is specified, the FIM
+			 will use this method to measure frame intervals
+			 instead of via the EOF interrupt. The input capture
+			 method is much preferred over EOF as it is not
+			 subject to interrupt latency errors. However it
+			 requires routing the VSYNC or FIELD output
+			 signals of the camera sensor to one of the
+			 i.MX input capture pads (SD1_DAT0, SD1_DAT1),
+			 which also gives up support for SD1.
+
+
+mipi_csi2 node
+--------------
+
+This is the device node for the MIPI CSI-2 Receiver, required for MIPI
+CSI-2 sensors.
+
+Required properties:
+- compatible	: "fsl,imx-mipi-csi2";
+- reg           : physical base address and length of the register set;
+- clocks	: the MIPI CSI-2 receiver requires three clocks: hsi_tx
+                  (the DPHY clock), video_27m, and eim_sel;
+- clock-names	: must contain "dphy_clk", "cfg_clk", "pix_clk";
+
+Optional properties:
+- interrupts	: must contain two level-triggered interrupts,
+                  in order: 100 and 101;
+
+
+Device tree nodes of the image sensors' controlled directly by the imx
+camera host interface driver must be child nodes of their corresponding
+I2C bus controller node. The data link of these image sensors must be
+specified using the common video interfaces bindings, defined in
+video-interfaces.txt.
+
+Video capture is supported with the following imx-based reference
+platforms:
+
+
+SabreLite with OV5642
+---------------------
+
+The OV5642 module is connected to the parallel bus input on the internal
+video mux to IPU1 CSI0. It's i2c bus connects to i2c bus 2, so the ov5642
+sensor node must be a child of i2c2.
+
+OV5642 Required properties:
+- compatible	: "ovti,ov5642";
+- clocks        : the OV5642 system clock (cko2, 200);
+- clock-names	: must be "xclk";
+- reg           : must be 0x3c;
+- xclk          : the system clock frequency, must be 24000000;
+- reset-gpios   : must be <&gpio1 8 0>;
+- pwdn-gpios    : must be <&gpio1 6 0>;
+
+OV5642 Endpoint Required properties:
+- remote-endpoint : must connect to parallel sensor interface input endpoint 
+  		    on ipu1_csi0 video mux (ipu1_csi0_mux_from_parallel_sensor).
+- bus-width       : must be 8;
+- hsync-active    : must be 1;
+- vsync-active    : must be 1;
+
+The following is an example devicetree video capture configuration for
+SabreLite:
+
+/ {
+	ipucap0: ipucap@0 {
+		compatible = "fsl,imx-video-capture";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_csi0>;
+		ports = <&ipu1_csi0>;
+		status = "okay";
+	};
+};
+
+&ipu1_csi0_from_ipu1_csi0_mux {
+	bus-width = <8>;
+	data-shift = <12>; /* Lines 19:12 used */
+	hsync-active = <1>;
+	vync-active = <1>;
+};
+
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&ov5642_to_ipu1_csi0_mux>;
+};
+
+&ipu1_csi0_mux {
+	status = "okay";
+};
+
+&i2c2 {
+	camera: ov5642@3c {
+		compatible = "ovti,ov5642";
+		clocks = <&clks 200>;
+		clock-names = "xclk";
+		reg = <0x3c>;
+		xclk = <24000000>;
+		reset-gpios = <&gpio1 8 0>;
+		pwdn-gpios = <&gpio1 6 0>;
+		gp-gpios = <&gpio1 16 0>;
+
+		port {
+			ov5642_to_ipu1_csi0_mux: endpoint {
+				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+			};
+		};
+	};
+};
+
+
+SabreAuto with ADV7180
+----------------------
+
+On the SabreAuto, an on-board ADV7180 SD decoder is connected to the
+parallel bus input on the internal video mux to IPU1 CSI0.
+
+Two analog video inputs are routed to the ADV7180 on the SabreAuto,
+composite on Ain1, and composite on Ain3. Those inputs are defined
+via inputs and input-names properties under the ipu1_csi0_mux parallel
+sensor input endpoint (ipu1_csi0_mux_from_parallel_sensor).
+
+Regulators and port expanders are required for the ADV7180 (power pin
+is via port expander gpio on i2c3). The reset pin to the port expander
+chip (MAX7310) is controlled by a gpio, so a reset-gpios property must
+be defined under the port expander node to control it.
+
+The sabreauto uses a steering pin to select between the SDA signal on
+i2c3 bus, and a data-in pin for an SPI NOR chip. i2cmux can be used to
+control this steering pin. Idle state of the i2cmux selects SPI NOR.
+This is not classic way to use i2cmux, since one side of the mux selects
+something other than an i2c bus, but it works and is probably the cleanest
+solution. Note that if one thread is attempting to access SPI NOR while
+another thread is accessing i2c3, the SPI NOR access will fail since the
+i2cmux has selected the SDA pin rather than SPI NOR data-in. This couldn't
+be avoided in any case, the board is not designed to allow concurrent
+i2c3 and SPI NOR functions (and the default device-tree does not enable
+SPI NOR anyway).
+
+Endpoint ipu1_csi0_mux_from_parallel_sensor Optional Properties:
+- inputs        : list of input mux values, must be 0x00 followed by
+                  0x02 on SabreAuto;
+- input-names   : names of the inputs;
+
+ADV7180 Required properties:
+- compatible    : "adi,adv7180";
+- reg           : must be 0x21;
+
+ADV7180 Optional properties:
+- DOVDD-supply  : DOVDD regulator supply;
+- AVDD-supply   : AVDD regulator supply;
+- DVDD-supply   : DVDD regulator supply;
+- PVDD-supply   : PVDD regulator supply;
+- pwdn-gpio     : gpio to control ADV7180 power pin, must be
+                  <&port_exp_b 2 0> on SabreAuto;
+- interrupts    : interrupt from ADV7180, must be <27 0x8> on SabreAuto;
+- interrupt-parent : must be <&gpio1> on SabreAuto;
+
+ADV7180 Endpoint Required properties:
+- remote-endpoint : must connect to parallel sensor interface input endpoint 
+  		    on ipu1_csi0 video mux (ipu1_csi0_mux_from_parallel_sensor).
+- bus-width       : must be 8;
+
+
+The following is an example devicetree video capture configuration for
+SabreAuto:
+
+/ {
+	i2cmux {
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			camera: adv7180@21 {
+				compatible = "adi,adv7180";
+				reg = <0x21>;
+				pwdn-gpio = <&port_exp_b 2 0>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <27 0x8>;
+
+				port {
+					adv7180_to_ipu1_csi0_mux: endpoint {
+						remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+						bus-width = <8>;
+					};
+				};
+			};
+
+			port_exp_b: gpio_pca953x@32 {
+				compatible = "maxim,max7310";
+				gpio-controller;
+				#gpio-cells = <2>;
+				reg = <0x32>;
+				reset-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+			};
+
+		};
+	};
+
+	ipucap0: ipucap@0 {
+		compatible = "fsl,imx-video-capture";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_csi0>;
+		ports = <&ipu1_csi0>;
+		status = "okay";
+
+		fim {
+			enable = <1>;
+			tolerance-range = <20 0>;
+			num-avg = <1>;
+			input-capture-channel = <0 IRQ_TYPE_EDGE_RISING>;
+		};
+	};
+};
+
+&ipu1_csi0_from_ipu1_csi0_mux {
+        bus-width = <8>;
+};
+
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7180_to_ipu1_csi0_mux>;
+	inputs = <0x00 0x02>;
+	input-names = "ADV7180 Composite on Ain1", "ADV7180 Composite on Ain3";
+};
+
+&ipu1_csi0_mux {
+	status = "okay";
+};
+
+/* input capture requires the input capture pin */
+&gpt {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpt_input_capture0>;
+};
+
+/* enabling input capture requires disabling SDHC1 */
+&usdhc1 {
+	status = "disabled";
+};
+
+
+
+SabreSD Quad with OV5642 and MIPI CSI-2 OV5640
+----------------------------------------------
+
+On the imx6q SabreSD, two camera sensors are supported: a parallel interface
+OV5642 on IPU1 CSI0, and a MIPI CSI-2 OV5640 on IPU1 CSI1 on MIPI virtual
+channel 1. The OV5642 connects to i2c bus 1 (i2c1) and the OV5640 to i2c
+bus 2 (i2c2).
+
+The mipi_csi2 receiver node must be enabled and its input endpoint connected
+via remote-endpoint to the OV5640 MIPI CSI-2 endpoint.
+
+OV5642 properties are as described above on SabreLite.
+
+OV5640 Required properties:
+- compatible	: "ovti,ov5640_mipi";
+- clocks        : the OV5640 system clock (cko, 201);
+- clock-names	: must be "xclk";
+- reg           : must be 0x3c;
+- xclk          : the system clock frequency, must be 24000000;
+- reset-gpios   : must be <&gpio1 20 1>;
+- pwdn-gpios    : must be <&gpio1 19 0>;
+
+OV5640 Optional properties:
+- DOVDD-supply  : DOVDD regulator supply;
+- AVDD-supply   : AVDD regulator supply;
+- DVDD-supply   : DVDD regulator supply;
+
+OV5640 MIPI CSI-2 Endpoint Required properties:
+- remote-endpoint : must connect to mipi_csi receiver input endpoint
+  		    (mipi_csi_from_mipi_sensor).
+- reg             : must be 1; /* virtual channel 1 */
+- data-lanes      : must be <0 1>;
+- clock-lanes     : must be <2>;
+
+
+The following is an example devicetree video capture configuration for
+SabreSD:
+
+/ {
+	ipucap0: ipucap@0 {
+		compatible = "fsl,imx-video-capture";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_csi0>;
+		ports = <&ipu1_csi0>, <&ipu1_csi1>;
+		status = "okay";
+	};
+};
+
+&i2c1 {
+	camera: ov5642@3c {
+		compatible = "ovti,ov5642";
+		clocks = <&clks 201>;
+		clock-names = "xclk";
+		reg = <0x3c>;
+		xclk = <24000000>;
+		DOVDD-supply = <&vgen4_reg>; /* 1.8v */
+		AVDD-supply = <&vgen5_reg>;  /* 2.8v, rev C board is VGEN3
+						rev B board is VGEN5 */
+		DVDD-supply = <&vgen2_reg>;  /* 1.5v*/
+		pwdn-gpios = <&gpio1 16 GPIO_ACTIVE_LOW>;   /* SD1_DAT0 */
+		reset-gpios = <&gpio1 17 GPIO_ACTIVE_HIGH>; /* SD1_DAT1 */
+
+		port {
+			ov5642_to_ipu1_csi0_mux: endpoint {
+				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+			};
+		};
+	};
+};
+
+&i2c2 {
+	mipi_camera: ov5640@3c {
+		compatible = "ovti,ov5640_mipi";
+		reg = <0x3c>;
+		clocks = <&clks 201>;
+		clock-names = "xclk";
+		xclk = <24000000>;
+		DOVDD-supply = <&vgen4_reg>; /* 1.8v */
+		AVDD-supply = <&vgen5_reg>;  /* 2.8v, rev C board is VGEN3
+						rev B board is VGEN5 */
+		DVDD-supply = <&vgen2_reg>;  /* 1.5v*/
+		pwdn-gpios = <&gpio1 19 GPIO_ACTIVE_HIGH>; /* SD1_DAT2 */
+		reset-gpios = <&gpio1 20 GPIO_ACTIVE_LOW>; /* SD1_CLK */
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			ov5640_to_mipi_csi: endpoint@1 {
+				reg = <1>; /* virtual channel 1 */
+				remote-endpoint = <&mipi_csi_from_mipi_sensor>;
+				data-lanes = <0 1>;
+				clock-lanes = <2>;
+			};
+		};
+	};
+};
+
+ipu1_csi0_from_ipu1_csi0_mux {
+	bus-width = <8>;
+	data-shift = <12>; /* Lines 19:12 used */
+	hsync-active = <1>;
+	vsync-active = <1>;
+};
+
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&ov5642_to_ipu1_csi0_mux>;
+};
+
+&ipu1_csi0_mux {
+	status = "okay";
+};
+
+&mipi_csi {
+	status = "okay";
+};
+
+/* Incoming port from sensor */
+&mipi_csi_from_mipi_sensor {
+	remote-endpoint = <&ov5640_to_mipi_csi>;
+	data-lanes = <0 1>;
+	clock-lanes = <2>;
+};
+
+&ipu1_csi1_from_mipi_vc1 {
+	data-lanes = <0 1>;
+	clock-lanes = <2>;
+};

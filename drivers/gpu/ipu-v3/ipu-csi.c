@@ -611,6 +611,14 @@ int ipu_csi_set_skip_smfc(struct ipu_csi *csi, u32 skip,
 }
 EXPORT_SYMBOL_GPL(ipu_csi_set_skip_smfc);
 
+int ipu_csi_set_src(struct ipu_csi *csi, u32 vc, bool select_mipi_csi2)
+{
+	ipu_set_csi_src_mux(csi->ipu, csi->id, select_mipi_csi2);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ipu_csi_set_src);
+
 int ipu_csi_set_dest(struct ipu_csi *csi, enum ipu_csi_dest csi_dest)
 {
 	unsigned long flags;

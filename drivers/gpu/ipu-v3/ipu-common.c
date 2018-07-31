@@ -730,6 +730,25 @@ void ipu_set_ic_src_mux(struct ipu_soc *ipu, int csi_id, bool vdi)
 }
 EXPORT_SYMBOL_GPL(ipu_set_ic_src_mux);
 
+/*
+ * Set the source for the VDIC. Selects either from CSI[01] or memory.
+ */
+void ipu_set_vdi_src_mux(struct ipu_soc *ipu, bool csi)
+{
+	unsigned long flags;
+	u32 val;
+
+	spin_lock_irqsave(&ipu->lock, flags);
+
+	val = ipu_cm_read(ipu, IPU_FS_PROC_FLOW1);
+	val &= ~(0x3 << 28);
+	if (csi)
+		val |= (0x01 << 28);
+	ipu_cm_write(ipu, val, IPU_FS_PROC_FLOW1);
+
+	spin_unlock_irqrestore(&ipu->lock, flags);
+}
+EXPORT_SYMBOL_GPL(ipu_set_vdi_src_mux);
 
 /* Frame Synchronization Unit Channel Linking */
 
