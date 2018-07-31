@@ -85,9 +85,6 @@
 #include <linux/busfreq-imx6.h>
 #include <linux/reset.h>
 #else
-#if !defined(IMX8_SCU_CONTROL)
-#include <linux/busfreq-imx.h>
-#endif
 #include <linux/reset.h>
 #endif
 #endif
