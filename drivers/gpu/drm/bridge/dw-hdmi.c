@@ -1417,6 +1417,26 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
+	struct edid *edid;
+
+	if (hdmi->ddc && drm_probe_ddc(hdmi->ddc)) {
+		edid = drm_get_edid(connector, hdmi->ddc);
+		if (edid) {
+			dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
+				edid->width_cm, edid->height_cm);
+
+			drm_mode_connector_update_edid_property(connector, edid);
+			kfree(edid);
+			return connector_status_connected;
+		} else {
+			dev_dbg(hdmi->dev, "failed to get edid\n");
+		}
+	}
+
+	/* if EDID probing fails, try if we can sense an attached display */
+	if (hdmi_readb(hdmi, HDMI_PHY_STAT0) & 0xf0)
+		return connector_status_connected;
+
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
 	dw_hdmi_update_power(hdmi);
@@ -1425,6 +1445,8 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 
 	return hdmi_readb(hdmi, HDMI_PHY_STAT0) & HDMI_PHY_HPD ?
 		connector_status_connected : connector_status_disconnected;
+
+	return connector_status_disconnected;
 }
 
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
