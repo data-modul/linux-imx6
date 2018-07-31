@@ -1203,6 +1203,19 @@ config SCx200_ACB
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
 
+config I2C_IMX_HDMI
+	tristate "IMX6 HDMI DDC I2C master interface"
+	depends on ARCH_MXC
+	default n
+	help
+	  Say Y here if you want to use the HDMI DDC bus controller
+	  found on the Freescale i.MX6 processors. Most probably you
+	  don't need this driver, if HDMI monitor is supposed to be
+	  connected over regular iMX6 I2C bus.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-imx-hdmi.
+
 config I2C_OPAL
 	tristate "IBM OPAL I2C driver"
 	depends on PPC_POWERNV

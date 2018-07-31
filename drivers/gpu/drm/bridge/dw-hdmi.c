@@ -31,8 +31,6 @@
 #include "dw-hdmi.h"
 #include "dw-hdmi-audio.h"
 
-#define HDMI_EDID_LEN		512
-
 #define RGB			0
 #define YCBCR444		1
 #define YCBCR422_16BITS		2
@@ -117,7 +115,7 @@ struct dw_hdmi {
 
 	int vic;
 
-	u8 edid[HDMI_EDID_LEN];
+	struct edid *edid;
 	bool cable_plugin;
 
 	bool phy_enabled;
@@ -1179,11 +1177,10 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 	hdmi->vic = drm_match_cea_mode(mode);
 
-	if (!hdmi->vic) {
-		dev_dbg(hdmi->dev, "Non-CEA mode used in HDMI\n");
-	} else {
+	if (drm_detect_hdmi_monitor(hdmi->edid) && hdmi->vic)
 		dev_dbg(hdmi->dev, "CEA mode used vic=%d\n", hdmi->vic);
-	}
+	else
+		dev_dbg(hdmi->dev, "Non-CEA mode used in HDMI\n");
 
 	if ((hdmi->vic == 6) || (hdmi->vic == 7) ||
 	    (hdmi->vic == 21) || (hdmi->vic == 22) ||
@@ -1298,8 +1295,6 @@ static void initialize_hdmi_ih_mutes(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, 0xff, HDMI_GP_MASK);
 	hdmi_writeb(hdmi, 0xff, HDMI_A_APIINTMSK);
 	hdmi_writeb(hdmi, 0xff, HDMI_CEC_MASK);
-	hdmi_writeb(hdmi, 0xff, HDMI_I2CM_INT);
-	hdmi_writeb(hdmi, 0xff, HDMI_I2CM_CTLINT);
 
 	/* Disable interrupts in the IH_MUTE_* registers */
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_FC_STAT0);
@@ -1307,7 +1302,6 @@ static void initialize_hdmi_ih_mutes(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_FC_STAT2);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_AS_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_PHY_STAT0);
-	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_I2CM_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_CEC_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_VP_STAT0);
 	hdmi_writeb(hdmi, 0xff, HDMI_IH_MUTE_I2CMPHY_STAT0);
@@ -1420,6 +1414,29 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
+	/* free previous EDID block */
+	if (hdmi->edid) {
+		drm_mode_connector_update_edid_property(connector, NULL);
+		kfree(hdmi->edid);
+		hdmi->edid = NULL;
+	}
+
+	if (hdmi->ddc && drm_probe_ddc(hdmi->ddc)) {
+		hdmi->edid = drm_get_edid(connector, hdmi->ddc);
+		if (hdmi->edid) {
+			drm_mode_connector_update_edid_property(connector,
+								hdmi->edid);
+			dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
+				hdmi->edid->width_cm, hdmi->edid->height_cm);
+
+			return connector_status_connected;
+		}
+	}
+
+	/* if EDID probing fails, try if we can sense an attached display */
+	if (hdmi_readb(hdmi, HDMI_PHY_STAT0) & 0xf0)
+		return connector_status_connected;
+
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
 	dw_hdmi_update_power(hdmi);
@@ -1428,32 +1445,24 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 
 	return hdmi_readb(hdmi, HDMI_PHY_STAT0) & HDMI_PHY_HPD ?
 		connector_status_connected : connector_status_disconnected;
+
+	return connector_status_disconnected;
 }
 
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
-	struct edid *edid;
 	int ret = 0;
 
-	if (!hdmi->ddc)
-		return 0;
 
-	edid = drm_get_edid(connector, hdmi->ddc);
-	if (edid) {
-		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
-			edid->width_cm, edid->height_cm);
-
-		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
-		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
-		drm_mode_connector_update_edid_property(connector, edid);
-		ret = drm_add_edid_modes(connector, edid);
+	if (hdmi->edid) {
+		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(hdmi->edid);
+		hdmi->sink_has_audio = drm_detect_monitor_audio(hdmi->edid);
+		ret = drm_add_edid_modes(connector, hdmi->edid);
 		/* Store the ELD */
-		drm_edid_to_eld(connector, edid);
-		kfree(edid);
 	} else {
-		dev_dbg(hdmi->dev, "failed to get edid\n");
+		dev_dbg(hdmi->dev, "failed to get edid modes\n");
 	}
 
 	return ret;
