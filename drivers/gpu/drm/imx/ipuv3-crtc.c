@@ -25,7 +25,7 @@
 #include <linux/errno.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fb_cma_helper.h>
-
+#include <drm/drm_crtc.h>
 #include <video/imx-ipu-v3.h>
 #include "imx-drm.h"
 #include "ipuv3-plane.h"
@@ -292,6 +292,43 @@ static void ipu_put_resources(struct ipu_crtc *ipu_crtc)
 		ipu_di_put(ipu_crtc->di);
 }
 
+#include <drm/imx-ipu-v3-vout.h>
+
+static int ipu_vout_init(struct ipu_crtc *ipu_crtc)
+{
+	struct ipu_soc *ipu = dev_get_drvdata(ipu_crtc->dev->parent);
+	struct ipu_vout_pdata pdata;
+	struct platform_device *pdev;
+
+	pdata.ipu = ipu;
+	pdata.dp = ipu_crtc->plane[0]->dp;
+	pdata.ipu_ch = ipu_crtc->plane[0]->ipu_ch;
+
+	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-vout",
+		drm_crtc_index(&ipu_crtc->base), &pdata, sizeof(pdata));
+
+	return 0;
+}
+
+static int ipu_ovl_init(struct ipu_crtc *ipu_crtc)
+{
+	struct ipu_soc *ipu = dev_get_drvdata(ipu_crtc->dev->parent);
+	struct ipu_ovl_pdata pdata;
+	struct platform_device *pdev;
+
+	pdata.ipu = ipu;
+	pdata.dp = ipu_crtc->plane[1]->dp;
+	pdata.ipu_ch = ipu_crtc->plane[1]->ipu_ch;
+	pdata.ipu_ch_bg = ipu_crtc->plane[0]->ipu_ch;
+	pdata.dmfc = ipu_crtc->plane[1]->dmfc;
+	pdata.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC;
+	
+	pdev = platform_device_register_data(ipu_crtc->dev, "imx-ipuv3-ovl",
+		drm_crtc_index(&ipu_crtc->base), &pdata, sizeof(pdata));
+
+	return 0;
+}
+
 static int ipu_get_resources(struct ipu_crtc *ipu_crtc,
 		struct ipu_client_platformdata *pdata)
 {
@@ -371,6 +408,11 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 				goto err_put_plane0_res;
 			}
 		}
+	}
+
+	if (pdata->dp >= 0) {
+		ipu_vout_init(ipu_crtc);
+		ipu_ovl_init(ipu_crtc);
 	}
 
 	ipu_crtc->irq = ipu_plane_irq(ipu_crtc->plane[0]);

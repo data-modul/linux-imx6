@@ -183,6 +183,7 @@ int ipu_idmac_channel_irq(struct ipu_soc *ipu, struct ipuv3_channel *channel,
 int ipu_get_num(struct ipu_soc *ipu);
 void ipu_set_csi_src_mux(struct ipu_soc *ipu, int csi_id, bool mipi_csi2);
 void ipu_set_ic_src_mux(struct ipu_soc *ipu, int csi_id, bool vdi);
+void ipu_set_vdi_src_mux(struct ipu_soc *ipu, bool csi);
 void ipu_dump(struct ipu_soc *ipu);
 
 /*
@@ -306,6 +307,8 @@ void ipu_dp_disable_channel(struct ipu_dp *dp);
 void ipu_dp_disable(struct ipu_soc *ipu);
 int ipu_dp_setup_channel(struct ipu_dp *dp,
 		enum ipu_color_space in, enum ipu_color_space out);
+int ipu_dp_get_channel(struct ipu_dp *dp,
+		enum ipu_color_space *in, enum ipu_color_space *out);
 int ipu_dp_set_window_pos(struct ipu_dp *, u16 x_pos, u16 y_pos);
 int ipu_dp_set_global_alpha(struct ipu_dp *dp, bool enable, u8 alpha,
 		bool bg_chan);
@@ -327,6 +330,7 @@ int ipu_csi_set_mipi_datatype(struct ipu_csi *csi, u32 vc,
 			      struct v4l2_mbus_framefmt *mbus_fmt);
 int ipu_csi_set_skip_smfc(struct ipu_csi *csi, u32 skip,
 			  u32 max_ratio, u32 id);
+int ipu_csi_set_src(struct ipu_csi *csi, u32 vc, bool select_mipi_csi2);
 int ipu_csi_set_dest(struct ipu_csi *csi, enum ipu_csi_dest csi_dest);
 int ipu_csi_enable(struct ipu_csi *csi);
 int ipu_csi_disable(struct ipu_csi *csi);
@@ -359,6 +363,7 @@ void ipu_ic_task_disable(struct ipu_ic *ic);
 int ipu_ic_task_idma_init(struct ipu_ic *ic, struct ipuv3_channel *channel,
 			  u32 width, u32 height, int burst_size,
 			  enum ipu_rotate_mode rot);
+int ipu_ic_set_src(struct ipu_ic *ic, int csi_id, bool vdi);
 int ipu_ic_enable(struct ipu_ic *ic);
 int ipu_ic_disable(struct ipu_ic *ic);
 struct ipu_ic *ipu_ic_get(struct ipu_soc *ipu, enum ipu_ic_task task);
@@ -406,6 +411,12 @@ struct ipu_client_platformdata {
 	int dp;
 	int dma[2];
 	struct device_node *of_node;
+};
+
+enum ipu_image_scale_ctrl {
+	IPU_IMAGE_SCALE_ROUND_DOWN,
+	IPU_IMAGE_SCALE_PIXELPERFECT,
+	IPU_IMAGE_SCALE_ROUND_UP,
 };
 
 #endif /* __DRM_IPU_H__ */

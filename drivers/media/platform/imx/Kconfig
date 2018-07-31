@@ -1,0 +1,42 @@
+config VIDEO_IMX_IPU_COMMON
+	tristate
+	default y
+
+config VIDEO_IMX
+	tristate "i.MX5/6 V4L2 devices"
+	depends on VIDEO_V4L2 && ARCH_MXC && IMX_IPUV3_CORE
+	default y
+	---help---
+	  Say yes here to enable support for video4linux drivers for
+	  the i.MX5/6 SOC.
+
+config VIDEO_IMX_M2M
+	tristate "i.MX5/6 Mem2Mem driver"
+	depends on VIDEO_IMX && VIDEO_DEV
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_MEM2MEM_DEV
+	default y
+	---help---
+	  Use the IPU IC Post-processor on the i.MX5/6 SoC for mem2mem
+	  processing of buffers. Operations include scaling, rotation,
+	  and color space conversion. The driver implements tiling to
+	  support scaling up to 4096x4096.
+
+config VIDEO_IMX_IPU_OVL
+	tristate "i.MX51/53 IPUv3 based overlay driver"
+	depends on VIDEO_DEV && DRM_IMX_IPUV3
+	select V4L2_MEM2MEM_DEV
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEO_IMX_IPU_COMMON
+	---help---
+	  This is a v4l2 overlay video driver for the i.MX51/53.
+
+config VIDEO_IMX_IPU_VOUT
+	tristate "i.MX51/53 IPUv3 based video output driver"
+	depends on VIDEO_DEV && DRM_IMX_IPUV3
+	select V4L2_MEM2MEM_DEV
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEO_IMX_IPU_COMMON
+	---help---
+	  This is a v4l2 video output driver rendering on the base framebuffer
+	  of the IPUV3.
