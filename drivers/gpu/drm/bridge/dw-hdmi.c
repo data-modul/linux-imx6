@@ -31,8 +31,6 @@
 #include "dw-hdmi.h"
 #include "dw-hdmi-audio.h"
 
-#define HDMI_EDID_LEN		512
-
 #define RGB			0
 #define YCBCR444		1
 #define YCBCR422_16BITS		2
@@ -117,7 +115,7 @@ struct dw_hdmi {
 
 	int vic;
 
-	u8 edid[HDMI_EDID_LEN];
+	struct edid *edid;
 	bool cable_plugin;
 
 	bool phy_enabled;
@@ -1416,19 +1414,22 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
-	struct edid *edid;
+	/* free previous EDID block */
+	if (hdmi->edid) {
+		drm_mode_connector_update_edid_property(connector, NULL);
+		kfree(hdmi->edid);
+		hdmi->edid = NULL;
+	}
 
 	if (hdmi->ddc && drm_probe_ddc(hdmi->ddc)) {
-		edid = drm_get_edid(connector, hdmi->ddc);
-		if (edid) {
+		hdmi->edid = drm_get_edid(connector, hdmi->ddc);
+		if (hdmi->edid) {
+			drm_mode_connector_update_edid_property(connector,
+								hdmi->edid);
 			dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
-				edid->width_cm, edid->height_cm);
+				hdmi->edid->width_cm, hdmi->edid->height_cm);
 
-			drm_mode_connector_update_edid_property(connector, edid);
-			kfree(edid);
 			return connector_status_connected;
-		} else {
-			dev_dbg(hdmi->dev, "failed to get edid\n");
 		}
 	}
 
@@ -1452,26 +1453,16 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
-	struct edid *edid;
 	int ret = 0;
 
-	if (!hdmi->ddc)
-		return 0;
 
-	edid = drm_get_edid(connector, hdmi->ddc);
-	if (edid) {
-		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
-			edid->width_cm, edid->height_cm);
-
-		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
-		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
-		drm_mode_connector_update_edid_property(connector, edid);
-		ret = drm_add_edid_modes(connector, edid);
+	if (hdmi->edid) {
+		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(hdmi->edid);
+		hdmi->sink_has_audio = drm_detect_monitor_audio(hdmi->edid);
+		ret = drm_add_edid_modes(connector, hdmi->edid);
 		/* Store the ELD */
-		drm_edid_to_eld(connector, edid);
-		kfree(edid);
 	} else {
-		dev_dbg(hdmi->dev, "failed to get edid\n");
+		dev_dbg(hdmi->dev, "failed to get edid modes\n");
 	}
 
 	return ret;
