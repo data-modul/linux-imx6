@@ -28,6 +28,8 @@
 
 #define HW_USBPHY_PWD				0x00
 #define HW_USBPHY_TX				0x10
+#define HW_USBPHY_TX_SET			0x14
+#define HW_USBPHY_TX_CLR			0x18
 #define HW_USBPHY_CTRL				0x30
 #define HW_USBPHY_CTRL_SET			0x34
 #define HW_USBPHY_CTRL_CLR			0x38
@@ -242,6 +244,7 @@ static int mxs_phy_hw_init(struct mxs_phy *mxs_phy)
 		writel(BM_USBPHY_IP_FIX, base + HW_USBPHY_IP_SET);
 
 	mxs_phy_tx_init(mxs_phy);
+	writel(0xf, base + HW_USBPHY_TX_SET);
 
 	return 0;
 }

@@ -42,4 +42,20 @@
 #define	DP83867_RGMIIDCTL_3_75_NS	0xe
 #define	DP83867_RGMIIDCTL_4_00_NS	0xf
 
+/* CLK_OUT source */
+#define	DP83867_CLK_OUT_CHAN_D_TX_CLK			0x0B	/* 01011  Channel D transmit clock */
+#define	DP83867_CLK_OUT_CHAN_C_TX_CLK			0x0A	/* 01010  Channel C transmit clock             */
+#define	DP83867_CLK_OUT_CHAN_B_TX_CLK			0x09	/* 01001  Channel B transmit clock             */
+#define	DP83867_CLK_OUT_CHAN_A_TX_CLK			0x08	/* 01000  Channel A transmit clock             */
+#define	DP83867_CLK_OUT_CHAN_D_RX_CLK_DIV_5		0x07	/* 00111  Channel D receive clock divided by 5 */
+#define	DP83867_CLK_OUT_CHAN_C_RX_CLK_DIV_5		0x06	/* 00110  Channel C receive clock divided by 5 */
+#define	DP83867_CLK_OUT_CHAN_B_RX_CLK_DIV_5		0x05	/* 00101  Channel B receive clock divided by 5 */
+#define	DP83867_CLK_OUT_CHAN_A_RX_CLK_DIV_5		0x04	/* 00100  Channel A receive clock divided by 5 */
+#define	DP83867_CLK_OUT_CHAN_D_RX_CLK			0x03	/* 00011  Channel D receive clock              */
+#define	DP83867_CLK_OUT_CHAN_C_RX_CLK			0x02	/* 00010  Channel C receive clock              */
+#define	DP83867_CLK_OUT_CHAN_B_RX_CLK			0x01	/* 00001  Channel B receive clock              */
+#define	DP83867_CLK_OUT_CHAN_A_RX_CLK			0x00	/* 00000  Channel A receive clock              */
+#define	DP83867_CLK_OUT_MASK					0x1F	/* clock field mask */
+#define	DP83867_CLK_OUT_SHIFT					8		/* clock field shift count */
+
 #endif

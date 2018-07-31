@@ -1,0 +1,41 @@
+/*
+ * Copyright 2018 Data Modul AG, Reyhaneh Yazdani <reyhane.y84@gmail.com>
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html 
+ */
+
+/ {
+	clocks {
+		anaclk1 {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>; /* 100MHz */
+		};
+	};
+};
+
+&clks {
+	assigned-clocks = <&clks IMX6QDL_PLL6_BYPASS_SRC>,
+			  <&clks IMX6QDL_PLL6_BYPASS>;
+	assigned-clock-parents = <&clks IMX6QDL_CLK_LVDS1_IN>,
+				 <&clks IMX6QDL_PLL6_BYPASS_SRC>;
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&pcie {
+	clkreq-gpio = <&gpio2 23 GPIO_ACTIVE_LOW>;
+	clocks = <&clks IMX6QDL_CLK_PCIE_AXI>,
+		 <&clks IMX6QDL_CLK_LVDS1_IN>,
+		 <&clks IMX6QDL_CLK_PCIE_REF_125M>, /* For solo, even without SATA: IMX6QDL_CLK_SATA_REF_100M*/
+		 <&clks IMX6QDL_PLL6_BYPASS>,
+		 <&clks IMX6QDL_PLL6_BYPASS_SRC>;
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_ext", "pcie_ext_src";
+	ext_osc = <1>;
+	status = "okay";
+};

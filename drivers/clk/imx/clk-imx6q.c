@@ -24,6 +24,8 @@
 
 #include "clk.h"
 
+#define EXT_OSC 0 /* No external clock. Set to 1 for using external clock*/
+
 static const char *step_sels[]	= { "osc", "pll2_pfd2_396m", };
 static const char *pll1_sw_sels[]	= { "pll1_sys", "step", };
 static const char *periph_pre_sels[]	= { "pll2_bus", "pll2_pfd2_396m", "pll2_pfd0_352m", "pll2_198m", };
@@ -162,6 +164,9 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	void __iomem *base;
 	int i;
 	int ret;
+#ifdef EXT_OSC
+	u32 val;
+#endif
 
 	clk[IMX6QDL_CLK_DUMMY] = imx_clk_fixed("dummy", 0);
 	clk[IMX6QDL_CLK_CKIL] = imx_obtain_fixed_clock("ckil", 0);
@@ -630,8 +635,23 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	clk_set_parent(clk[IMX6QDL_CLK_SPDIF_SEL], clk[IMX6QDL_CLK_PLL3_PFD3_454M]);
 
 	/* All existing boards with PCIe use LVDS1 */
-	if (IS_ENABLED(CONFIG_PCI_IMX6))
+	if (IS_ENABLED(CONFIG_PCI_IMX6)) {
 		clk_set_parent(clk[IMX6QDL_CLK_LVDS1_SEL], clk[IMX6QDL_CLK_SATA_REF_100M]);
+#ifdef EXT_OSC
+		np = of_find_compatible_node(NULL, NULL, "snps,dw-pcie");
+		/* external oscillator is used or not. */
+		if (of_property_read_u32(np, "ext_osc", &val) < 0)
+			val = 0;
+		/*
+		 * imx6qp sabresd revb board has the external osc used by pcie
+		 * - pll6 should be set bypass mode later in driver.
+		 * - lvds_clk1 should be selected as pll6 bypass
+		 * src, set here.
+		 */
+		if ((clk_on_imx6q() || clk_on_imx6dl())&& (val == 1))
+			clk_set_parent(clk[IMX6QDL_PLL6_BYPASS_SRC], clk[IMX6QDL_CLK_LVDS1_IN]);
+#endif
+	}
 
 	/*
 	 * Initialize the GPU clock muxes, so that the maximum specified clock

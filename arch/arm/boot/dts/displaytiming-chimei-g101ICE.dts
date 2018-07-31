@@ -1,0 +1,16 @@
+&displaytimings {
+	native-mode = <&timing0>;
+	timing0: Chimei-G101ICE-L01-1280x800 {
+		clock-frequency = <71100000>;
+		hactive = <1280>;
+		vactive = <800>;
+		hfront-porch = <16>;
+		hback-porch = <64>;
+		hsync-len = <80>;
+		hsync-active = <0>;
+		vfront-porch = <3>;
+		vback-porch = <4>;
+		vsync-len = <16>;
+		vsync-active = <0>;
+	};
+};

@@ -37,42 +37,59 @@ static const char *const backlight_types[] = {
  * framebuffer driver. We're looking if that important event is blanking,
  * and if it is and necessary, we're switching backlight power as well ...
  */
+static int fb_bl_set(struct backlight_device *bd, struct fb_event *evdata)
+{
+	int fb_blank = 0;
+	int node = evdata->info->node;
+
+	if (!bd->ops->check_fb ||
+	    bd->ops->check_fb(bd, evdata->info)) {
+		fb_blank = *(int *)evdata->data;
+		if (fb_blank == FB_BLANK_UNBLANK &&
+		    !bd->fb_bl_on[node]) {
+			bd->fb_bl_on[node] = true;
+			if (!bd->use_count++) {
+				bd->props.state &= ~BL_CORE_FBBLANK;
+				bd->props.fb_blank = FB_BLANK_UNBLANK;
+				backlight_update_status(bd);
+			}
+		} else if (fb_blank != FB_BLANK_UNBLANK &&
+			   bd->fb_bl_on[node]) {
+			bd->fb_bl_on[node] = false;
+			if (!(--bd->use_count)) {
+				bd->props.state |= BL_CORE_FBBLANK;
+				bd->props.fb_blank = fb_blank;
+				backlight_update_status(bd);
+			}
+		}
+	}
+	return 0;
+
+}
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
 	struct backlight_device *bd;
 	struct fb_event *evdata = data;
-	int node = evdata->info->node;
-	int fb_blank = 0;
 
 	/* If we aren't interested in this event, skip it immediately ... */
-	if (event != FB_EVENT_BLANK && event != FB_EVENT_CONBLANK)
+	switch (event) {
+	case FB_EVENT_BLANK:
+	case FB_EVENT_CONBLANK:
+	case FB_EVENT_FB_REGISTERED:
+		break;
+	default:
 		return 0;
+	}
 
 	bd = container_of(self, struct backlight_device, fb_notif);
 	mutex_lock(&bd->ops_lock);
-	if (bd->ops)
-		if (!bd->ops->check_fb ||
-		    bd->ops->check_fb(bd, evdata->info)) {
-			fb_blank = *(int *)evdata->data;
-			if (fb_blank == FB_BLANK_UNBLANK &&
-			    !bd->fb_bl_on[node]) {
-				bd->fb_bl_on[node] = true;
-				if (!bd->use_count++) {
-					bd->props.state &= ~BL_CORE_FBBLANK;
-					bd->props.fb_blank = FB_BLANK_UNBLANK;
-					backlight_update_status(bd);
-				}
-			} else if (fb_blank != FB_BLANK_UNBLANK &&
-				   bd->fb_bl_on[node]) {
-				bd->fb_bl_on[node] = false;
-				if (!(--bd->use_count)) {
-					bd->props.state |= BL_CORE_FBBLANK;
-					bd->props.fb_blank = fb_blank;
-					backlight_update_status(bd);
-				}
-			}
-		}
+	if (bd->ops) {
+		if (event == FB_EVENT_FB_REGISTERED)
+			backlight_update_status(bd);
+		else
+			fb_bl_set(bd, evdata);
+	}
 	mutex_unlock(&bd->ops_lock);
 	return 0;
 }
@@ -283,6 +300,7 @@ static SIMPLE_DEV_PM_OPS(backlight_class_dev_pm_ops, backlight_suspend,
 static void bl_device_release(struct device *dev)
 {
 	struct backlight_device *bd = to_backlight_device(dev);
+
 	kfree(bd);
 }
 
