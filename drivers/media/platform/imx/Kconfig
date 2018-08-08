@@ -10,7 +10,7 @@ config VIDEO_IMX
 	  Say yes here to enable support for video4linux drivers for
 	  the i.MX5/6 SOC.
 
-config VIDEO_IMX_M2M
+config VIDEO_IMX_IPU_SCALER
 	tristate "i.MX5/6 Mem2Mem driver"
 	depends on VIDEO_IMX && VIDEO_DEV
 	select VIDEOBUF2_DMA_CONTIG
