@@ -34,7 +34,7 @@
 #define MEM2MEM_CAPTURE BIT(0)
 #define MEM2MEM_OUTPUT  BIT(1)
 
-#define MEM2MEM_NAME		"imx-m2m"
+#define MEM2MEM_NAME		"imx-ipuv3-scale"
 
 #define MIN_W 16
 #define MIN_H 16
@@ -213,7 +213,7 @@ static int vidioc_querycap(struct file *file, void *fh,
 {
 	strncpy(cap->driver, MEM2MEM_NAME, sizeof(cap->driver) - 1);
 	strncpy(cap->card, MEM2MEM_NAME, sizeof(cap->card) - 1);
-	strncpy(cap->bus_info, "platform:imx-m2m",
+	strncpy(cap->bus_info, "platform:"MEM2MEM_NAME,
 			sizeof(cap->bus_info) - 1);
 	cap->device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_STREAMING;
 	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
