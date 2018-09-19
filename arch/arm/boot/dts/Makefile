@@ -334,14 +334,14 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-wandboard-revb1.dtb \
 	imx6qp-sabreauto.dtb \
 	imx6qp-sabresd.dtb \
-	imx6dl-dmo-ppc-chimei-g070y2.dtb \
-	imx6dl-dmo-ppc-chimei-g101ICE.dtb \
+	imx6dl-dmo-ppc-chimei-g070y2_12014865.dtb \
+	imx6dl-dmo-ppc-chimei-g101ICE_12017029.dtb \
 	imx6dl-dmo-ppc-auo-g804sn05.dtb \
-	imx6dl-dmo-ppc-auo-g173hw01.dtb \
-	imx6q-dmo-ppc-chimei-g070y2.dtb \
-	imx6q-dmo-ppc-chimei-g101ICE.dtb \
+	imx6dl-dmo-ppc-auo-g173hw01_12005317.dtb \
+	imx6q-dmo-ppc-chimei-g070y2_12014865.dtb \
+	imx6q-dmo-ppc-chimei-g101ICE_12017029.dtb \
 	imx6q-dmo-ppc-auo-g804sn05.dtb \
-	imx6q-dmo-ppc-auo-g173hw01.dtb
+	imx6q-dmo-ppc-auo-g173hw01_12005317.dtb
 dtb-$(CONFIG_SOC_IMX6SL) += \
 	imx6sl-evk.dtb \
 	imx6sl-evk-btwifi.dtb \
