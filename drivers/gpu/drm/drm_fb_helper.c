@@ -48,6 +48,12 @@ module_param_named(fbdev_emulation, drm_fbdev_emulation, bool, 0600);
 MODULE_PARM_DESC(fbdev_emulation,
 		 "Enable legacy fbdev emulation [default=true]");
 
+static int drm_fbdev_overalloc = CONFIG_DRM_FBDEV_OVERALLOC;
+module_param(drm_fbdev_overalloc, int, 0444);
+MODULE_PARM_DESC(drm_fbdev_overalloc,
+		 "Overallocation of the fbdev buffer (%) [default="
+		 __MODULE_STRING(CONFIG_DRM_FBDEV_OVERALLOC) "]");
+
 static LIST_HEAD(kernel_fb_helper_list);
 
 /**
@@ -1227,6 +1233,73 @@ int drm_fb_helper_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 EXPORT_SYMBOL(drm_fb_helper_setcmap);
 
 /**
+ * drm_fb_helper_ioctl - legacy ioctl implementation
+ * @info: fbdev registered by the helper
+ * @cmd: ioctl command
+ * @arg: ioctl argument
+ *
+ * A helper to implement the standard fbdev ioctl. Only
+ * FBIO_WAITFORVSYNC is implemented for now.
+ */
+int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
+			unsigned long arg)
+{
+	struct drm_fb_helper *fb_helper = info->par;
+	struct drm_mode_set *mode_set;
+	struct drm_crtc *crtc;
+	int ret = 0;
+
+	mutex_lock(&fb_helper->lock);
+	if (!drm_fb_helper_is_bound(fb_helper)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	switch (cmd) {
+	case FBIO_WAITFORVSYNC:
+		/*
+		 * Only consider the first CRTC.
+		 *
+		 * This ioctl is supposed to take the CRTC number as
+		 * an argument, but in fbdev times, what that number
+		 * was supposed to be was quite unclear, different
+		 * drivers were passing that argument differently
+		 * (some by reference, some by value), and most of the
+		 * userspace applications were just hardcoding 0 as an
+		 * argument.
+		 *
+		 * The first CRTC should be the integrated panel on
+		 * most drivers, so this is the best choice we can
+		 * make. If we're not smart enough here, one should
+		 * just consider switch the userspace to KMS.
+		 */
+		mode_set = &fb_helper->crtc_info[0].mode_set;
+		crtc = mode_set->crtc;
+
+		/*
+		 * Only wait for a vblank event if the CRTC is
+		 * enabled, otherwise just don't do anythintg,
+		 * not even report an error.
+		 */
+		ret = drm_crtc_vblank_get(crtc);
+		if (!ret) {
+			drm_crtc_wait_one_vblank(crtc);
+			drm_crtc_vblank_put(crtc);
+		}
+
+		ret = 0;
+		goto unlock;
+	default:
+		ret = -ENOTTY;
+	}
+
+unlock:
+	mutex_unlock(&fb_helper->lock);
+	return ret;
+}
+EXPORT_SYMBOL(drm_fb_helper_ioctl);
+
+/**
  * drm_fb_helper_check_var - implementation for ->fb_check_var
  * @var: screeninfo to check
  * @info: fbdev registered by the helper
@@ -1566,6 +1639,10 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 		sizes.fb_width = sizes.surface_width = 1024;
 		sizes.fb_height = sizes.surface_height = 768;
 	}
+
+	/* Handle our overallocation */
+	sizes.surface_height *= drm_fbdev_overalloc;
+	sizes.surface_height /= 100;
 
 	/* push down into drivers */
 	ret = (*fb_helper->funcs->fb_probe)(fb_helper, &sizes);
