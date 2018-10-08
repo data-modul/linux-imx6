@@ -201,6 +201,18 @@ struct drm_fb_helper {
 	struct work_struct resume_work;
 
 	/**
+	 * @lock:
+	 *
+	 * Top-level FBDEV helper lock. This protects all internal data
+	 * structures and lists, such as @connector_info and @crtc_info.
+	 *
+	 * FIXME: fbdev emulation locking is a mess and long term we want to
+	 * protect all helper internal state with this lock as well as reduce
+	 * core KMS locking as much as possible.
+	 */
+	struct mutex lock;
+
+	/**
 	 * @kernel_fb_list:
 	 *
 	 * Entry on the global kernel_fb_helper_list, used for kgdb entry/exit.
@@ -228,7 +240,8 @@ struct drm_fb_helper {
 	.fb_set_par	= drm_fb_helper_set_par, \
 	.fb_setcmap	= drm_fb_helper_setcmap, \
 	.fb_blank	= drm_fb_helper_blank, \
-	.fb_pan_display	= drm_fb_helper_pan_display
+	.fb_pan_display	= drm_fb_helper_pan_display, \
+	.fb_ioctl	= drm_fb_helper_ioctl
 
 #ifdef CONFIG_DRM_FBDEV_EMULATION
 void drm_fb_helper_prepare(struct drm_device *dev, struct drm_fb_helper *helper,
@@ -283,6 +296,8 @@ void drm_fb_helper_set_suspend_unlocked(struct drm_fb_helper *fb_helper,
 					bool suspend);
 
 int drm_fb_helper_setcmap(struct fb_cmap *cmap, struct fb_info *info);
+
+int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg);
 
 int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper);
 int drm_fb_helper_initial_config(struct drm_fb_helper *fb_helper, int bpp_sel);
