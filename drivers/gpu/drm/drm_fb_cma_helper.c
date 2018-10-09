@@ -311,6 +311,7 @@ static int drm_fb_cma_mmap(struct fb_info *info, struct vm_area_struct *vma)
 
 static struct fb_ops drm_fbdev_cma_ops = {
 	.owner		= THIS_MODULE,
+	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_fillrect	= drm_fb_helper_sys_fillrect,
 	.fb_copyarea	= drm_fb_helper_sys_copyarea,
 	.fb_imageblit	= drm_fb_helper_sys_imageblit,

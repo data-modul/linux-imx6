@@ -1249,7 +1249,7 @@ int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 	struct drm_crtc *crtc;
 	int ret = 0;
 
-	mutex_lock(&fb_helper->lock);
+	mutex_lock(&fb_helper->dev->mode_config.mutex);
 	if (!drm_fb_helper_is_bound(fb_helper)) {
 		ret = -EBUSY;
 		goto unlock;
@@ -1294,7 +1294,7 @@ int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 	}
 
 unlock:
-	mutex_unlock(&fb_helper->lock);
+	mutex_unlock(&fb_helper->dev->mode_config.mutex);
 	return ret;
 }
 EXPORT_SYMBOL(drm_fb_helper_ioctl);
