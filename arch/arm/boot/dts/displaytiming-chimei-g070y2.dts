@@ -1,16 +1,16 @@
 &displaytimings {
 	native-mode = <&timing0>;
 	timing0: Chimei-g070y2-L01-800x480 {
-		clock-frequency = <28285712>;
+		clock-frequency = <29500000>;
 		hactive = <800>;
 		vactive = <480>;
-		hfront-porch = <10>;
-		hback-porch = <10>;
-		hsync-len = <130>;
+		hfront-porch = <24>;
+		hback-porch = <96>;
+		hsync-len = <72>;
 		hsync-active = <1>;
-		vfront-porch = <5>;
-		vback-porch = <5>;
-		vsync-len = <10>;
+		vfront-porch = <3>;
+		vback-porch = <10>;
+		vsync-len = <7>;
 		vsync-active = <1>;
 	};
 };
