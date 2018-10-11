@@ -1,0 +1,16 @@
+&displaytimings {
+	native-mode = <&timing0>;
+	timing0: Chimei-g121I1-L01-1280x800 {
+		clock-frequency = <71000000>;
+		hactive = <1280>;
+		vactive = <800>;
+		hfront-porch = <48>;
+		hback-porch = <80>;
+		hsync-len = <32>;
+		hsync-active = <1>;
+		vfront-porch = <3>;
+		vback-porch = <14>;
+		vsync-len = <6>;
+		vsync-active = <1>;
+	};
+};
