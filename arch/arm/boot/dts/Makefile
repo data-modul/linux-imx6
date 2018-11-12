@@ -417,7 +417,8 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-dmo-ppc-chimei-g101ICE_12018182.dtb \
 	imx6q-dmo-ppc-chimei-g121I1_12018381.dtb \
 	imx6q-dmo-ppc-auo-g804sn05.dtb \
-	imx6q-dmo-ppc-auo-g173hw01.dtb
+	imx6q-dmo-ppc-auo-g173hw01.dtb \
+	imx6q-dmo-plt.dtb
 dtb-$(CONFIG_SOC_IMX6SL) += \
 	imx6sl-evk.dtb \
 	imx6sl-warp.dtb

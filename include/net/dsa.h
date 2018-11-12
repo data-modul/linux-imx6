@@ -25,6 +25,7 @@ enum dsa_tag_protocol {
 	DSA_TAG_PROTO_DSA,
 	DSA_TAG_PROTO_TRAILER,
 	DSA_TAG_PROTO_EDSA,
+	DSA_TAG_PROTO_KSZ,
 	DSA_TAG_PROTO_BRCM,
 	DSA_TAG_PROTO_QCA,
 	DSA_TAG_LAST,		/* MUST BE LAST */
@@ -139,11 +140,19 @@ struct dsa_switch_tree {
 	const struct dsa_device_ops *tag_ops;
 };
 
+/* TC mirroring entry */
+struct dsa_mall_mirror_tc_entry {
+	u8 to_local_port;
+	bool ingress;
+};
+
 struct dsa_port {
 	struct net_device	*netdev;
 	struct device_node	*dn;
 	unsigned int		ageing_time;
 	u8			stp_state;
+	struct dsa_switch	*ds;
+	unsigned int		index;
 };
 
 struct dsa_switch {
@@ -200,6 +209,8 @@ struct dsa_switch {
 	u32			phys_mii_mask;
 	struct dsa_port		ports[DSA_MAX_PORTS];
 	struct mii_bus		*slave_mii_bus;
+	/* Dynamically allocated ports, keep last */
+	size_t num_ports;
 };
 
 static inline bool dsa_is_cpu_port(struct dsa_switch *ds, int p)
@@ -238,6 +249,9 @@ struct switchdev_obj;
 struct switchdev_obj_port_fdb;
 struct switchdev_obj_port_mdb;
 struct switchdev_obj_port_vlan;
+
+typedef int dsa_fdb_dump_cb_t(const unsigned char *addr, u16 vid,
+			      bool is_static, void *data);
 
 struct dsa_switch_ops {
 	struct list_head	list;
@@ -388,6 +402,14 @@ struct dsa_switch_ops {
 	int	(*port_mdb_dump)(struct dsa_switch *ds, int port,
 				 struct switchdev_obj_port_mdb *mdb,
 				 int (*cb)(struct switchdev_obj *obj));
+	/*
+	 * TC integration
+	 */
+	int	(*port_mirror_add)(struct dsa_switch *ds, int port,
+				   struct dsa_mall_mirror_tc_entry *mirror,
+				   bool ingress);
+	void	(*port_mirror_del)(struct dsa_switch *ds, int port,
+				   struct dsa_mall_mirror_tc_entry *mirror);
 };
 
 void register_switch_driver(struct dsa_switch_ops *type);
@@ -399,6 +421,7 @@ static inline bool dsa_uses_tagged_protocol(struct dsa_switch_tree *dst)
 	return dst->rcv != NULL;
 }
 
+struct dsa_switch *dsa_switch_alloc(struct device *dev, size_t n);
 void dsa_unregister_switch(struct dsa_switch *ds);
 int dsa_register_switch(struct dsa_switch *ds, struct device_node *np);
 #ifdef CONFIG_PM_SLEEP

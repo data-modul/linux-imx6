@@ -75,6 +75,9 @@ extern const struct dsa_device_ops dsa_netdev_ops;
 /* tag_edsa.c */
 extern const struct dsa_device_ops edsa_netdev_ops;
 
+/* tag_ksz.c NST(qinno)*/
+extern const struct dsa_device_ops ksz_netdev_ops;
+
 /* tag_trailer.c */
 extern const struct dsa_device_ops trailer_netdev_ops;
 
