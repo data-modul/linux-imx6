@@ -621,7 +621,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
 	vbus-supply = <&reg_sys_4v2>;
-	dr_mode = "host";
+	dr_mode = "peripheral";
 	status = "okay";
 };
 
