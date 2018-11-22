@@ -589,14 +589,14 @@
 
 &hdmi {
 	ddc-i2c-bus = <&hdmi_ddc>;
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi_ddc {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_ddc>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* To use i.MX6 PCIe with external clock, need to include imx6qdl-dmo-ppc-ext-osc.dtsi
