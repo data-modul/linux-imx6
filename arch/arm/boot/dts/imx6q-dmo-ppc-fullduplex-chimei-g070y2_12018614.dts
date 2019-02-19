@@ -10,19 +10,35 @@
  */
 /dts-v1/;
 
-#include "imx6dl.dtsi"
+#include "imx6q.dtsi"
 #include "imx6qdl-dmo-ppc.dtsi"
 
 / {
-	model = "Data Modul AG PPC Board-Dl/S";
-	compatible = "dmo,imx6dl-ppc", "fsl,imx6dl";
+	model = "Data Modul AG PPC Board-Q/D";
+	compatible = "dmo,imx6q-ppc", "fsl,imx6q";
+
+	ipum2m1: ipum2m@ipu2 {
+		compatible = "fsl,imx-video-mem2mem";
+		ipu = <&ipu2>;
+		status = "okay";
+	};
+};
+
+&sata {
+	status = "okay";
 };
 
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
-	fsl,uart-has-rtscts;
-	linux,rs485-enabled-at-boot-time;
-	rs485-rts-active-high;
 	status = "okay";
 };
+
+&ldb {
+	lvds-channel@1 {
+		status = "okay";
+		displaytimings: display-timings {};
+	};
+};
+
+#include "displaytiming-chimei-g070y2.dts"
