@@ -31,8 +31,14 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
-	fsl,uart-has-rtscts;
-	linux,rs485-enabled-at-boot-time;
-	rs485-rts-active-high;
 	status = "okay";
 };
+
+&ldb {
+	lvds-channel@1 {
+		status = "okay";
+		displaytimings: display-timings {};
+	};
+};
+
+#include "displaytiming-chimei-g070y2.dts"
