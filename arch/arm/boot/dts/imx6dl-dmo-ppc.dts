@@ -17,3 +17,12 @@
 	model = "Data Modul AG PPC Board-Dl/S";
 	compatible = "dmo,imx6dl-ppc", "fsl,imx6dl";
 };
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	fsl,uart-has-rtscts;
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-high;
+	status = "okay";
+};
