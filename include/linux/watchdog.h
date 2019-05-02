@@ -88,6 +88,7 @@ struct watchdog_device {
 	unsigned int pretimeout;
 	unsigned int min_timeout;
 	unsigned int max_timeout;
+	unsigned int max_hw_heartbeat_ms;
 	void *driver_data;
 	struct mutex lock;
 	unsigned long status;
@@ -97,6 +98,9 @@ struct watchdog_device {
 #define WDOG_ALLOW_RELEASE	2	/* Did we receive the magic char ? */
 #define WDOG_NO_WAY_OUT		3	/* Is 'nowayout' feature set ? */
 #define WDOG_UNREGISTERED	4	/* Has the device been unregistered */
+#define WDOG_STOP_ON_REBOOT	5	/* Should be stopped on reboot */
+#define WDOG_HW_RUNNING		6	/* True if HW watchdog running */
+	struct list_head deferred;
 };
 
 #define WATCHDOG_NOWAYOUT		IS_BUILTIN(CONFIG_WATCHDOG_NOWAYOUT)
@@ -113,6 +117,12 @@ static inline void watchdog_set_nowayout(struct watchdog_device *wdd, bool noway
 {
 	if (nowayout)
 		set_bit(WDOG_NO_WAY_OUT, &wdd->status);
+}
+
+/* Use the following function to stop the watchdog on reboot */
+static inline void watchdog_stop_on_reboot(struct watchdog_device *wdd)
+{
+	set_bit(WDOG_STOP_ON_REBOOT, &wdd->status);
 }
 
 /* Use the following function to check if a timeout value is invalid */
