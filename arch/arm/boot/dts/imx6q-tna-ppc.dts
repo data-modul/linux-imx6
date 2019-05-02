@@ -10,38 +10,9 @@
  */
 /dts-v1/;
 
-#include "imx6q.dtsi"
-#include "imx6qdl-dmo-ppc.dtsi"
+#include "imx6q-dmo-ppc.dts"
 
 / {
-	model = "Data Modul AG PPC Board-Q/D";
-	compatible = "dmo,imx6q-ppc", "fsl,imx6q";
-
-	aliases {
-		mxcfb0 = &mxcfb1;
-		mxcfb3 = &mxcfb4;
-	};
-
-	mxcfb1: fb@0 {
-		compatible = "fsl,mxc_sdc_fb";
-		disp_dev = "ldb";
-		interface_pix_fmt = "RGB24";
-		default_bpp = <16>;
-		int_clk = <0>;
-		late_init = <0>;
-		status = "okay";
-	};
-
-	mxcfb4: fb@3 {
-		compatible = "fsl,mxc_sdc_fb";
-		disp_dev = "ldb";
-		interface_pix_fmt = "RGB24";
-		default_bpp = <16>;
-		int_clk = <0>;
-		late_init = <0>;
-		status = "okay";
-	};
-
 	sound {
 		status = "disabled";
 	};
@@ -49,15 +20,6 @@
 
 &sata {
 	status = "disabled";
-};
-
-&uart2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart2>;
-	fsl,uart-has-rtscts;
-	linux,rs485-enabled-at-boot-time;
-	rs485-rts-active-high;
-	status = "okay";
 };
 
 &i2c1 {
@@ -86,5 +48,9 @@
 		mode = "sin0";
 		sec_ipu_id = <0>;
 		sec_disp_id = <0>;
+		status = "okay";
+		displaytimings: display-timings {};
 	};
 };
+
+#include "displaytiming-chimei-g101ICE.dts"
