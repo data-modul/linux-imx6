@@ -16,6 +16,31 @@
 / {
 	model = "Data Modul AG PPC Board-Q/D";
 	compatible = "dmo,imx6q-ppc", "fsl,imx6q";
+
+	aliases {
+		mxcfb0 = &mxcfb1;
+		mxcfb3 = &mxcfb4;
+	};
+
+	mxcfb1: fb@0 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "ldb";
+		interface_pix_fmt = "RGB24";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "okay";
+	};
+
+	mxcfb4: fb@3 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "ldb";
+		interface_pix_fmt = "RGB24";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "okay";
+	};
 };
 
 &sata {
@@ -29,4 +54,20 @@
 	linux,rs485-enabled-at-boot-time;
 	rs485-rts-active-high;
 	status = "okay";
+};
+
+&ldb {
+	compatible = "fsl,imx6q-ldb";
+	status = "okay";
+	
+	lvds-channel@1 {
+		primary;
+		crtc = "ipu2-di0";
+		ipu_id = <1>;
+		disp_id = <1>;
+		ext_ref = <1>;
+		mode = "sin0";
+		sec_ipu_id = <0>;
+		sec_disp_id = <0>;
+	};
 };
