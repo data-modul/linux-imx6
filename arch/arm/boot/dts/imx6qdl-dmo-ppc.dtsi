@@ -19,73 +19,6 @@
 		linux,stdout-path = &uart1;
 	};
 
-	clocks {
-		rmii_clk: clock@0 {
-			compatible = "fixed-clock";
-			reg = <0>;
-			#clock-cells = <0>;
-			clock-frequency = <50000000>; /* 50MHz */
-		};
-		
-		anaclk1 {
-			compatible = "fixed-clock";
-			reg = <0>;
-			#clock-cells = <0>;
-			clock-frequency = <100000000>; /* 100MHz */
-		};
-	};
-
-	soc {
-		pcie2: pcie2@0x01000000 {
-			compatible = "fsl,imx6q-pcie", "snps,dw-pcie";
-			reg = <0x01ffc000 0x04000>,
-			      <0x01f00000 0x80000>;
-			reg-names = "dbi", "config";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			device_type = "pci";
-			ranges = <0x00000800 0 0x01f00000 0x01f00000 0 0x00080000 /* configuration space */
-				  0x81000000 0 0          0x01f80000 0 0x00010000 /* downstream I/O  */
-				  0x82000000 0 0x01000000 0x01000000 0 0x00f00000>; /* non-prefetchable  memory */
-			num-lanes = <1>;
-			interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &gpc GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 2 &gpc GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 3 &gpc GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
-			                <0 0 0 4 &gpc GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks IMX6QDL_CLK_PCIE_AXI>,
-				 <&clks IMX6QDL_CLK_LVDS1_GATE>,
-				 <&clks IMX6QDL_CLK_PCIE_REF_125M>;
-			clock-names = "pcie", "pcie_bus", "pcie_phy";
-			status = "disabled";
-		};
-
-		aips-bus@02100000 { /* AIPS2 */
-			fec: ethernet@02188000 {
-				compatible = "fsl,imx6q-fec";
-				reg = <0x02188000 0x4000>;
-				interrupts-extended =
-					<&intc 0 118 IRQ_TYPE_LEVEL_HIGH>,
-					<&intc 0 119 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks IMX6QDL_CLK_ENET>,
-					 <&clks IMX6QDL_CLK_ENET>,
-					 <&clks IMX6QDL_CLK_ENET_REF>,
-					 <&rmii_clk>;
-				clock-names = "ipg", "ahb", "ptp";
-				status = "disabled";
-			};
-
-			ocotp: ocotp@021bc000 {
-				compatible = "fsl,imx6q-ocotp", "syscon";
-				reg = <0x021bc000 0x4000>;
-				clocks = <&clks IMX6QDL_CLK_IIM>;
-			};
-		};
-	};
-
 	backlight1: backlight {
 		compatible = "pwm-backlight";
 
@@ -450,13 +383,14 @@
 				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0 /* wakeup */
 				MX6QDL_PAD_GPIO_17__GPIO7_IO12		0x130b0 /* reset */
 				MX6QDL_PAD_GPIO_19__GPIO4_IO05		0x1b0b0	/* dis */
+				MX6QDL_PAD_EIM_CS0__GPIO2_IO23		0x4001b0b0 /* PCIE_CLKREQ#  */
 			>;
 		};
 
 		pinctrl_pwm_backlight: backlightgrp {
 			fsl,pins = <
 				MX6QDL_PAD_GPIO_9__PWM1_OUT		0x0001B0B0
-				MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x0001B0B0 /* en pwr LVDS*/
+				MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x000130B0 /* en pwr LVDS*/
 			>;
 		};
 
@@ -609,10 +543,10 @@
 			>;
 		};
 
-		pinctrl_hdmi: hdmigrp {
+		pinctrl_hdmi_ddc: hdmi_ddcgrp {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_D16__HDMI_TX_DDC_SDA	0x0001B0B0
-				MX6QDL_PAD_EIM_EB2__HDMI_TX_DDC_SCL	0x0001B0B0
+				MX6QDL_PAD_EIM_D16__HDMI_TX_DDC_SDA	0x4001B8B1
+				MX6QDL_PAD_EIM_EB2__HDMI_TX_DDC_SCL	0x4001B8B1
 			>;
 		};
 	};
