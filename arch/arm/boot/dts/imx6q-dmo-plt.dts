@@ -628,9 +628,9 @@
 &usdhc3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
-	cd-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
+	cd-gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>;
 	/* WP cannot be really used on uSD socket */
-	wp-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
+	wp-gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
